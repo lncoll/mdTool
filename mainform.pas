@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, Menus, ComCtrls,
-  ExtCtrls, StdCtrls, IniFiles, LCLType, htmlview, SynEdit, SynMarkdown;
+  ExtCtrls, StdCtrls, IniFiles, LCLType, htmlview, SynEdit, SynEditTypes,
+  SynMarkdown;
 
 type
 
@@ -137,6 +138,7 @@ type
     procedure UpdatePreview;
     procedure UpdateCaption;
     procedure UpdateStatus;
+    procedure SyncPreviewScroll;
     procedure ApplyEditorFont;
     procedure ApplyViewerZoom;
     procedure LoadPrefs;
@@ -362,6 +364,8 @@ procedure TFrmMain.SynEditorStatusChange(Sender: TObject;
   Changes: TSynStatusChanges);
 begin
   UpdateStatus;
+  if [scCaretY, scTopLine] * Changes <> [] then
+    SyncPreviewScroll;
 end;
 
 procedure TFrmMain.PreviewTimerTimer(Sender: TObject);
@@ -759,6 +763,8 @@ begin
     LineEnding + '</body></html>';
   try
     HtmlPreview.LoadFromString(Html);
+    // Mantiene la posición tras recargar el documento
+    SyncPreviewScroll;
   except
     on E: Exception do
       StatusBar1.Panels[0].Text := 'Error preview: ' + E.Message;
@@ -782,8 +788,7 @@ end;
 procedure TFrmMain.UpdateStatus;
 var
   Pos: TPoint;
-begin
-  if StatusBar1.Panels.Count < 4 then
+begin  if StatusBar1.Panels.Count < 4 then
     Exit; // FormCreate aún no ha creado los paneles
   if FFileName = '' then
     StatusBar1.Panels[0].Text := 'sin título'
@@ -798,6 +803,27 @@ begin
   if StatusBar1.Panels.Count > 3 then
     StatusBar1.Panels[3].Text := Format('Visor %dpt (%d%%)',
       [FViewerFontSize, Round(FViewerFontSize / 12 * 100)]);
+end;
+
+procedure TFrmMain.SyncPreviewScroll;
+var
+  Frac: Double;
+  Count: Integer;
+begin
+  // Sincronía proporcional: la posición del caret en el editor
+  // se refleja en el scroll vertical del visor (solo editor→visor,
+  // sin bucles de realimentación).
+  Count := SynEditor.Lines.Count;
+  if Count <= 1 then
+    Frac := 0
+  else
+    Frac := (SynEditor.CaretXY.Y - 1) / (Count - 1);
+  if Frac < 0 then
+    Frac := 0;
+  if Frac > 1 then
+    Frac := 1;
+  HtmlPreview.VScrollBarPosition :=
+    Round(Frac * HtmlPreview.VScrollBarRange);
 end;
 
 procedure TFrmMain.ApplyEditorFont;

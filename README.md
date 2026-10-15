@@ -10,7 +10,7 @@ derecha en `THtmlViewer`, con actualización automática.
 
 - Nuevo / Abrir / Guardar / Guardar como / Exportar a HTML
 - Vista previa con retardo anti-rebote (400 ms), botón y tecla `F5`, con
-  auto-actualización conmutable
+  auto-actualización conmutable y scroll vertical sincronizado con el caret
 - Menú **Editar**: Deshacer / Rehacer, Cortar / Copiar / Pegar /
   Seleccionar todo, y submenú **Formato** (Títulos 1–3, Negrita, Cursiva,
   Tachado, Código, Enlace, Cita, Lista). Negrita/cursiva/tachado/código
