@@ -114,6 +114,7 @@ type
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure AppDropFiles(Sender: TObject; const FileNames: array of string);
     procedure PageControl1Change(Sender: TObject);
+    procedure PageControl1CloseTabClicked(Sender: TObject);
     procedure ViewPopupPopup(Sender: TObject);
     procedure popCopiarVerClick(Sender: TObject);
     procedure SynEditorChange(Sender: TObject);
@@ -253,6 +254,8 @@ begin
   SaveHtmlDialog.Filter := 'HTML (*.html)|*.html|Todos (*.*)|*.*';
   SaveHtmlDialog.DefaultExt := 'html';
   OpenDialog1.Options := OpenDialog1.Options + [ofAllowMultiSelect];
+  // X de cierre en cada pestaña (lo pinta el widgetset)
+  PageControl1.Options := PageControl1.Options + [nboShowCloseButtons];
   LoadPrefs; // fuente del editor + zoom del visor
   ApplyViewerZoom;
   // Atajos visibles en el menú. Los de zoom se dibujan en el Caption
@@ -730,6 +733,13 @@ begin
   HtmlPreview.CopyToClipboard;
 end;
 
+procedure TFrmMain.PageControl1CloseTabClicked(Sender: TObject);
+begin
+  // Sender es la pestaña cuya X se pulsó
+  if Sender is TTabSheet then
+    CloseDocTab(Sender as TTabSheet);
+end;
+
 procedure TFrmMain.RefreshForActiveDoc;
 begin
   UpdateCaption;
@@ -774,7 +784,7 @@ begin
   else
     T := ExtractFileName(Doc.FileName);
   if Doc.Modified then
-    T := T + ' *';
+    T := '* ' + T;
   for i := 0 to PageControl1.PageCount - 1 do
     if PageControl1.Pages[i].Tag = PtrInt(Doc) then
     begin

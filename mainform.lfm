@@ -34,6 +34,7 @@ object FrmMain: TFrmMain
       Align = alClient
       TabOrder = 0
       OnChange = PageControl1Change
+      OnCloseTabClicked = PageControl1CloseTabClicked
     end
   end
   object Splitter1: TSplitter
