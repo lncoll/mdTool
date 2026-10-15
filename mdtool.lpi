@@ -39,7 +39,7 @@
         <MinVersion Major="1" Valid="True"/>
       </Item2>
     </RequiredPackages>
-    <Units Count="4">
+    <Units Count="5">
       <Unit0>
         <Filename Value="mdtool.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -62,6 +62,14 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="SynMarkdown"/>
       </Unit3>
+      <Unit4>
+        <Filename Value="finddlg.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="FrmFind"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="FindDlg"/>
+      </Unit4>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

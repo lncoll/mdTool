@@ -16,6 +16,8 @@ derecha en `THtmlViewer`, con actualización automática.
   Tachado, Código, Enlace, Cita, Lista). Negrita/cursiva/tachado/código
   conmutan si el texto ya está marcado
 - Menú contextual con botón derecho en el editor
+- Buscar (`Ctrl+F` / `F3` / `Mayús+F3`) y reemplazar (`Ctrl+H`) no-modal,
+  con mayúsculas, palabras completas y regex
 - Fuente del editor configurable (persiste entre sesiones)
 - Tamaño del visor ajustable (persiste entre sesiones)
 - Parser Markdown propio (`markdown.pas`): headings, énfasis, código
@@ -40,6 +42,8 @@ derecha en `THtmlViewer`, con actualización automática.
 | Tachado / Código / Enlace| `Ctrl+D` / `` Ctrl+` `` / `Ctrl+K` |
 | Título 1 / 2 / 3         | `Ctrl+1` / `Ctrl+2` / `Ctrl+3` |
 | Cita / Lista             | `Ctrl+Q` / `Ctrl+L`  |
+| Buscar / siguiente / anterior | `Ctrl+F` / `F3` / `Mayús+F3` |
+| Reemplazar               | `Ctrl+H`             |
 | Fuente del editor        | `Ctrl+E`             |
 | Agrandar / achicar visor | `Ctrl++` / `Ctrl+-`  |
 | Restablecer zoom         | `Ctrl+0`             |
@@ -87,6 +91,8 @@ mainform.pas  formulario principal (editor + preview + menús)
 mainform.lfm  diseño del formulario
 markdown.pas  parser Markdown → HTML + hoja de estilos
 synmarkdown.pas highlighter Markdown para SynEdit
+finddlg.pas   diálogo no-modal de buscar/reemplazar
+finddlg.lfm   diseño del diálogo
 ```
 
 ## Notas técnicas
@@ -106,7 +112,7 @@ synmarkdown.pas highlighter Markdown para SynEdit
 
 - [x] Resaltado Markdown en SynEdit (`TSynMarkdownSyn`)
 - [ ] Task-lists y footnotes GFM
-- [ ] Buscar / reemplazar
+- [x] Buscar / reemplazar (diálogo no-modal, regex, wrap)
 - [ ] Pestañas multi-documento
 - [x] Arrastrar y soltar `.md` (`Application.OnDropFiles`)
 - [ ] Tema oscuro

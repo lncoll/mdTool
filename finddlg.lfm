@@ -1,0 +1,106 @@
+object FrmFind: TFrmFind
+  Left = 600
+  Height = 240
+  Top = 300
+  Width = 380
+  BorderStyle = bsDialog
+  Caption = 'Buscar'
+  ClientHeight = 240
+  ClientWidth = 380
+  Position = poMainFormCenter
+  LCLVersion = '4.4.0.0'
+  OnClose = FormClose
+  OnShow = FormShow
+  object lblFind: TLabel
+    Left = 12
+    Height = 17
+    Top = 12
+    Width = 44
+    Caption = 'Buscar:'
+    ParentColor = False
+  end
+  object edtFind: TEdit
+    Left = 90
+    Height = 27
+    Top = 8
+    Width = 278
+    TabOrder = 0
+  end
+  object lblReplace: TLabel
+    Left = 12
+    Height = 17
+    Top = 47
+    Width = 70
+    Caption = 'Reemplazar:'
+    ParentColor = False
+  end
+  object edtReplace: TEdit
+    Left = 90
+    Height = 27
+    Top = 43
+    Width = 278
+    TabOrder = 1
+  end
+  object chkCase: TCheckBox
+    Left = 12
+    Height = 23
+    Top = 82
+    Width = 200
+    Caption = 'Distinguir mayúsculas'
+    TabOrder = 2
+  end
+  object chkWords: TCheckBox
+    Left = 12
+    Height = 23
+    Top = 107
+    Width = 200
+    Caption = 'Palabras completas'
+    TabOrder = 3
+  end
+  object chkRegex: TCheckBox
+    Left = 12
+    Height = 23
+    Top = 132
+    Width = 200
+    Caption = 'Expresión regular'
+    TabOrder = 4
+  end
+  object btnNext: TButton
+    Left = 232
+    Height = 30
+    Top = 82
+    Width = 136
+    Caption = '&Buscar siguiente'
+    Default = True
+    TabOrder = 5
+    OnClick = btnNextClick
+  end
+  object btnReplace: TButton
+    Left = 232
+    Height = 30
+    Top = 118
+    Width = 136
+    Caption = '&Reemplazar'
+    TabOrder = 6
+    OnClick = btnReplaceClick
+  end
+  object btnAll: TButton
+    Left = 232
+    Height = 30
+    Top = 154
+    Width = 136
+    Caption = 'Reemplazar &todos'
+    TabOrder = 7
+    OnClick = btnAllClick
+  end
+  object btnClose: TButton
+    Left = 232
+    Height = 30
+    Top = 198
+    Width = 136
+    Cancel = True
+    Caption = '&Cerrar'
+    TabOrder = 8
+    OnClick = btnCloseClick
+  end
+end

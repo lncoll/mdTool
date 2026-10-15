@@ -199,6 +199,25 @@ object FrmMain: TFrmMain
         Caption = 'Seleccionar &todo'#9'Ctrl+A'
         OnClick = mnuSelTodoClick
       end
+      object mnuSepEdFind: TMenuItem
+        Caption = '-'
+      end
+      object mnuBuscar: TMenuItem
+        Caption = '&Buscar...'#9'Ctrl+F'
+        OnClick = mnuBuscarClick
+      end
+      object mnuReemplazar: TMenuItem
+        Caption = '&Reemplazar...'#9'Ctrl+H'
+        OnClick = mnuReemplazarClick
+      end
+      object mnuBuscarSig: TMenuItem
+        Caption = 'Buscar &siguiente'#9'F3'
+        OnClick = mnuBuscarSigClick
+      end
+      object mnuBuscarAnt: TMenuItem
+        Caption = 'Buscar &anterior'#9'Mayús+F3'
+        OnClick = mnuBuscarAntClick
+      end
       object mnuSepEd2: TMenuItem
         Caption = '-'
       end

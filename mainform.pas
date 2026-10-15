@@ -31,6 +31,11 @@ type
     mnuCopiar: TMenuItem;
     mnuPegar: TMenuItem;
     mnuSelTodo: TMenuItem;
+    mnuSepEdFind: TMenuItem;
+    mnuBuscar: TMenuItem;
+    mnuReemplazar: TMenuItem;
+    mnuBuscarSig: TMenuItem;
+    mnuBuscarAnt: TMenuItem;
     mnuSepEd2: TMenuItem;
     mnuFormato: TMenuItem;
     mnuTitulo1: TMenuItem;
@@ -109,6 +114,10 @@ type
     procedure mnuCopiarClick(Sender: TObject);
     procedure mnuPegarClick(Sender: TObject);
     procedure mnuSelTodoClick(Sender: TObject);
+    procedure mnuBuscarClick(Sender: TObject);
+    procedure mnuReemplazarClick(Sender: TObject);
+    procedure mnuBuscarSigClick(Sender: TObject);
+    procedure mnuBuscarAntClick(Sender: TObject);
     procedure mnuTituloClick(Sender: TObject);
     procedure mnuNegritaClick(Sender: TObject);
     procedure mnuCursivaClick(Sender: TObject);
@@ -130,6 +139,9 @@ type
     FLoading: Boolean;
     FViewerFontSize: Integer;
     FMdHighlighter: TSynMarkdownSyn;
+    FFindText: string;
+    FFindOpts: TSynSearchOptions;
+    FReplaceText: string;
     procedure SetFileName(const AValue: string);
     procedure SetModified(AValue: Boolean);
     function CheckSaveChanges: Boolean;
@@ -147,9 +159,17 @@ type
     procedure WrapSelection(const APrefix, ASuffix: string);
     procedure PrefixLines(const APrefix: string; AHeadingLevel: Integer = 0);
     procedure ApplyHeading(ALevel: Integer);
+    function MatchSelected: Boolean;
   public
     property FileName: string read FFileName;
     procedure OpenFile(const AFile: string);
+    procedure SetFind(const AText: string; AOptions: TSynSearchOptions;
+      const AReplace: string);
+    function SelectedOrEmpty: string;
+    function FindNext(ABackwards: Boolean): Boolean;
+    function ReplaceCurrent: Boolean;
+    function ReplaceAll: Integer;
+    procedure ShowStatus(const S: string);
   end;
 
 var
@@ -158,7 +178,7 @@ var
 implementation
 
 uses
-  Markdown;
+  Markdown, FindDlg;
 
 {$R *.lfm}
 
@@ -205,6 +225,10 @@ begin
   // El manejo real está en FormKeyDown con KeyPreview=True,
   // porque TSynEdit consume las teclas con foco.
   mnuFuenteEditor.ShortCut := ShortCut(Ord('E'), [ssCtrl]);
+  mnuBuscar.ShortCut := ShortCut(Ord('F'), [ssCtrl]);
+  mnuReemplazar.ShortCut := ShortCut(Ord('H'), [ssCtrl]);
+  mnuBuscarSig.ShortCut := ShortCut(VK_F3, []);
+  mnuBuscarAnt.ShortCut := ShortCut(VK_F3, [ssShift]);
   mnuZoomMas.ShortCut := 0;
   mnuZoomMenos.ShortCut := 0;
   mnuZoomReset.ShortCut := ShortCut(Ord('0'), [ssCtrl]);
@@ -243,6 +267,18 @@ end;
 procedure TFrmMain.FormKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
+  // F3 funciona con y sin Ctrl (el editor no lo consume)
+  if (Key = VK_F3) and not (ssAlt in Shift) and not (ssMeta in Shift) then
+  begin
+    if ssCtrl in Shift then
+      Exit; // reservado, no hacer nada
+    if ssShift in Shift then
+      mnuBuscarAntClick(Self)
+    else
+      mnuBuscarSigClick(Self);
+    Key := 0;
+    Exit;
+  end;
   // KeyPreview=True: esto corre antes que TSynEdit, que consume
   // Ctrl+E / Ctrl+ +/- /0 cuando el editor tiene el foco.
   if not (ssCtrl in Shift) then
@@ -253,6 +289,16 @@ begin
     Ord('E'):
       begin
         mnuFuenteEditorClick(Self);
+        Key := 0;
+      end;
+    Ord('F'):
+      begin
+        mnuBuscarClick(Self);
+        Key := 0;
+      end;
+    Ord('H'):
+      begin
+        mnuReemplazarClick(Self);
         Key := 0;
       end;
     Ord('0'), VK_NUMPAD0:
@@ -494,6 +540,168 @@ end;
 procedure TFrmMain.mnuSelTodoClick(Sender: TObject);
 begin
   SynEditor.SelectAll;
+end;
+
+procedure TFrmMain.mnuBuscarClick(Sender: TObject);
+begin
+  ShowFindDialog(Self, False);
+end;
+
+procedure TFrmMain.mnuReemplazarClick(Sender: TObject);
+begin
+  ShowFindDialog(Self, True);
+end;
+
+procedure TFrmMain.mnuBuscarSigClick(Sender: TObject);
+begin
+  if FFindText = '' then
+    mnuBuscarClick(Sender)
+  else
+    FindNext(False);
+end;
+
+procedure TFrmMain.mnuBuscarAntClick(Sender: TObject);
+begin
+  if FFindText = '' then
+    mnuBuscarClick(Sender)
+  else
+    FindNext(True);
+end;
+
+procedure TFrmMain.SetFind(const AText: string; AOptions: TSynSearchOptions;
+  const AReplace: string);
+begin
+  FFindText := AText;
+  FFindOpts := AOptions;
+  FReplaceText := AReplace;
+end;
+
+function TFrmMain.SelectedOrEmpty: string;
+begin
+  Result := '';
+  if SynEditor.SelAvail then
+  begin
+    Result := SynEditor.SelText;
+    if (Pos(#10, Result) > 0) or (Pos(#13, Result) > 0) or
+      (Length(Result) > 80) then
+      Result := '';
+  end;
+end;
+
+procedure TFrmMain.ShowStatus(const S: string);
+begin
+  if StatusBar1.Panels.Count > 0 then
+    StatusBar1.Panels[0].Text := S;
+end;
+
+function TFrmMain.FindNext(ABackwards: Boolean): Boolean;
+var
+  Opts: TSynSearchOptions;
+  Saved: TPoint;
+begin
+  Result := False;
+  if FFindText = '' then
+    Exit;
+  Opts := FFindOpts - [ssoReplace, ssoReplaceAll, ssoEntireScope, ssoPrompt];
+  if ABackwards then
+    Include(Opts, ssoBackwards)
+  else
+    Exclude(Opts, ssoBackwards);
+  try
+    Result := SynEditor.SearchReplace(FFindText, '', Opts) > 0;
+    if not Result then
+    begin
+      // Segunda pasada con wrap desde el otro extremo
+      Saved := SynEditor.CaretXY;
+      if ABackwards then
+        SynEditor.CaretXY :=
+          Point(Length(SynEditor.Lines[SynEditor.Lines.Count - 1]) + 1,
+          SynEditor.Lines.Count)
+      else
+        SynEditor.CaretXY := Point(1, 1);
+      Result := SynEditor.SearchReplace(FFindText, '', Opts) > 0;
+      if Result then
+      begin
+        if ABackwards then
+          ShowStatus('Búsqueda reiniciada desde el final')
+        else
+          ShowStatus('Búsqueda reiniciada desde el inicio');
+      end
+      else
+      begin
+        SynEditor.CaretXY := Saved;
+        ShowStatus('No encontrado: ' + FFindText);
+      end;
+    end;
+  except
+    on E: Exception do
+      ShowStatus('Error al buscar: ' + E.Message);
+  end;
+end;
+
+function TFrmMain.MatchSelected: Boolean;
+var
+  S: string;
+begin
+  Result := False;
+  if (FFindText = '') or not SynEditor.SelAvail then
+    Exit;
+  S := SynEditor.SelText;
+  if ssoMatchCase in FFindOpts then
+    Result := S = FFindText
+  else
+    Result := AnsiSameText(S, FFindText);
+end;
+
+function TFrmMain.ReplaceCurrent: Boolean;
+begin
+  Result := False;
+  if FFindText = '' then
+    Exit;
+  try
+    if MatchSelected then
+    begin
+      SynEditor.BeginUndoBlock;
+      try
+        SynEditor.SelText := FReplaceText;
+      finally
+        SynEditor.EndUndoBlock;
+      end;
+      ShowStatus('Reemplazado');
+    end;
+    Result := FindNext(False);
+  except
+    on E: Exception do
+      ShowStatus('Error al reemplazar: ' + E.Message);
+  end;
+end;
+
+function TFrmMain.ReplaceAll: Integer;
+var
+  Opts: TSynSearchOptions;
+begin
+  Result := 0;
+  if FFindText = '' then
+    Exit;
+  Opts := FFindOpts + [ssoReplace, ssoReplaceAll, ssoEntireScope] -
+    [ssoBackwards, ssoPrompt];
+  try
+    SynEditor.BeginUndoBlock;
+    try
+      Result := SynEditor.SearchReplace(FFindText, FReplaceText, Opts);
+    finally
+      SynEditor.EndUndoBlock;
+    end;
+    if Result = 0 then
+      ShowStatus('No encontrado: ' + FFindText)
+    else if Result = 1 then
+      ShowStatus('1 reemplazo')
+    else
+      ShowStatus(Format('%d reemplazos', [Result]));
+  except
+    on E: Exception do
+      ShowStatus('Error al reemplazar: ' + E.Message);
+  end;
 end;
 
 procedure TFrmMain.mnuTituloClick(Sender: TObject);
