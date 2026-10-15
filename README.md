@@ -9,12 +9,8 @@ derecha en `THtmlViewer`, con actualización automática.
 ## Características
 
 - Nuevo / Abrir / Guardar / Guardar como / Exportar a HTML
-- Vista previa con retardo anti-rebote (400 ms), botón y tecla `F5`, con
-  auto-actualización conmutable y scroll vertical sincronizado con el caret
-- Menú **Editar**: Deshacer / Rehacer, Cortar / Copiar / Pegar /
-  Seleccionar todo, y submenú **Formato** (Títulos 1–3, Negrita, Cursiva,
-  Tachado, Código, Enlace, Cita, Lista). Negrita/cursiva/tachado/código
-  conmutan si el texto ya está marcado. En visor maximizado el menú se
+- Vista previa con retardo anti-rebote (400 ms), botón y tecla `F5`, con auto-actualización conmutable y scroll vertical sincronizado con el caret
+- Menú **Editar**: Deshacer / Rehacer, Cortar / Copiar / Pegar / Seleccionar todo, y submenú **Formato** (Títulos 1–3, Negrita, Cursiva, Tachado, Código, Enlace, Cita, Lista). Negrita/cursiva/tachado/código conmutan si el texto ya está marcado. En visor maximizado el menú se
   reduce a Buscar, Copiar y Volver a edición (el Copiar copia del visor)
 - Menú contextual con botón derecho en el editor
 - Buscar (`Ctrl+F` / `F3` / `Mayús+F3`) y reemplazar (`Ctrl+H`) no-modal,
@@ -99,16 +95,10 @@ finddlg.lfm   diseño del diálogo
 
 ## Notas técnicas
 
-- Los atajos se gestionan en `FormKeyDown` con `KeyPreview` porque
-  `TSynEdit` consume las teclas cuando tiene el foco; `Ctrl++` no existe
-  como tecla LCL y se muestra en el caption del menú.
-- El `TSynEdit` creado por streaming no trae bindings de teclado (el
-  constructor los omite con `csLoading`); se restauran con
-  `SetDefaultKeystrokes` en `FormCreate`.
-- Tras modificar solo el `.lfm`, compilar con `lazbuild -B`, ya que el
-  recurso no invalida la caché de unidades.
-- `border-radius` está en el CSS (se ve en el HTML exportado), pero el
-  motor HtmlViewer no lo implementa: en el visor las cajas son cuadradas.
+- Los atajos se gestionan en `FormKeyDown` con `KeyPreview` porque `TSynEdit` consume las teclas cuando tiene el foco; `Ctrl++` no existe como tecla LCL y se muestra en el caption del menú.
+- El `TSynEdit` creado por streaming no trae bindings de teclado (el constructor los omite con `csLoading`); se restauran con `SetDefaultKeystrokes` en `FormCreate`.
+- Tras modificar solo el `.lfm`, compilar con `lazbuild -B`, ya que el recurso no invalida la caché de unidades.
+- `border-radius` está en el CSS (se ve en el HTML exportado), pero el motor HtmlViewer no lo implementa: en el visor las cajas son cuadradas.
 
 ## Roadmap
 
