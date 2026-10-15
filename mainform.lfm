@@ -308,6 +308,13 @@ object FrmMain: TFrmMain
         Caption = '&Restablecer zoom visor'
         OnClick = mnuZoomResetClick
       end
+      object mnuSepVer3: TMenuItem
+        Caption = '-'
+      end
+      object mnuMaxVisor: TMenuItem
+        Caption = 'Ma&ximizar visor'#9'F11'
+        OnClick = mnuMaxVisorClick
+      end
     end
     object mnuAyuda: TMenuItem
       Caption = 'A&yuda'

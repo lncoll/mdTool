@@ -80,6 +80,8 @@ type
     mnuZoomMas: TMenuItem;
     mnuZoomMenos: TMenuItem;
     mnuZoomReset: TMenuItem;
+    mnuSepVer3: TMenuItem;
+    mnuMaxVisor: TMenuItem;
     mnuAyuda: TMenuItem;
     mnuAcercaDe: TMenuItem;
     pnlEditor: TPanel;
@@ -132,12 +134,14 @@ type
     procedure mnuZoomMasClick(Sender: TObject);
     procedure mnuZoomMenosClick(Sender: TObject);
     procedure mnuZoomResetClick(Sender: TObject);
+    procedure mnuMaxVisorClick(Sender: TObject);
     procedure mnuAcercaDeClick(Sender: TObject);
   private
     FFileName: string;
     FModified: Boolean;
     FLoading: Boolean;
     FViewerFontSize: Integer;
+    FViewerMax: Boolean;
     FMdHighlighter: TSynMarkdownSyn;
     FFindText: string;
     FFindOpts: TSynSearchOptions;
@@ -153,6 +157,7 @@ type
     procedure SyncPreviewScroll;
     procedure ApplyEditorFont;
     procedure ApplyViewerZoom;
+    procedure SetViewerMax(AValue: Boolean);
     procedure LoadPrefs;
     procedure SavePrefs;
     function ConfigFile: string;
@@ -232,12 +237,17 @@ begin
   mnuZoomMas.ShortCut := 0;
   mnuZoomMenos.ShortCut := 0;
   mnuZoomReset.ShortCut := ShortCut(Ord('0'), [ssCtrl]);
+  mnuMaxVisor.ShortCut := ShortCut(VK_F11, []);
   mnuAutoActualizar.Checked := True;
   PreviewTimer.Interval := 400;
   PreviewTimer.Enabled := False;
   Application.OnDropFiles := @AppDropFiles;
   if (ParamCount >= 1) and FileExists(ParamStr(1)) then
-    LoadMdFile(ParamStr(1))
+  begin
+    LoadMdFile(ParamStr(1));
+    // Con fichero como parámetro se arranca con el visor maximizado
+    SetViewerMax(True);
+  end
   else
   begin
     SynEditor.Lines.Text :=
@@ -247,6 +257,7 @@ begin
       '- Vista previa a la derecha' + LineEnding + LineEnding +
       '**Abrir**, **Guardar** y **Exportar a HTML** desde el menú Archivo.';
     SetModified(False);
+    SetViewerMax(False);
   end;
   UpdatePreview;
   UpdateCaption;
@@ -267,7 +278,7 @@ end;
 procedure TFrmMain.FormKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
-  // F3 funciona con y sin Ctrl (el editor no lo consume)
+  // F3/F11 funcionan con y sin Ctrl (el editor no los consume)
   if (Key = VK_F3) and not (ssAlt in Shift) and not (ssMeta in Shift) then
   begin
     if ssCtrl in Shift then
@@ -276,6 +287,13 @@ begin
       mnuBuscarAntClick(Self)
     else
       mnuBuscarSigClick(Self);
+    Key := 0;
+    Exit;
+  end;
+  if (Key = VK_F11) and not (ssCtrl in Shift) and not (ssAlt in Shift) and
+    not (ssMeta in Shift) then
+  begin
+    mnuMaxVisorClick(Self);
     Key := 0;
     Exit;
   end;
@@ -890,6 +908,19 @@ begin
   FViewerFontSize := 12;
   ApplyViewerZoom;
   SavePrefs;
+end;
+
+procedure TFrmMain.mnuMaxVisorClick(Sender: TObject);
+begin
+  SetViewerMax(not FViewerMax);
+end;
+
+procedure TFrmMain.SetViewerMax(AValue: Boolean);
+begin
+  FViewerMax := AValue;
+  pnlEditor.Visible := not FViewerMax;
+  Splitter1.Visible := not FViewerMax;
+  mnuMaxVisor.Checked := FViewerMax;
 end;
 
 procedure TFrmMain.mnuAcercaDeClick(Sender: TObject);

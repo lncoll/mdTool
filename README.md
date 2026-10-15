@@ -20,6 +20,7 @@ derecha en `THtmlViewer`, con actualización automática.
   con mayúsculas, palabras completas y regex
 - Fuente del editor configurable (persiste entre sesiones)
 - Tamaño del visor ajustable (persiste entre sesiones)
+- Visor maximizado con `F11`; al abrir con fichero como parámetro arranca maximizado
 - Parser Markdown propio (`markdown.pas`): headings, énfasis, código
   (cercado e indentado), listas, citas, enlaces, imágenes, líneas
   horizontales y **tablas GFM** con alineación (`:--`, `:-:`, `--:`)
