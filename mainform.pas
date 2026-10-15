@@ -82,6 +82,8 @@ type
     popSepP4: TMenuItem;
     popCita: TMenuItem;
     popLista: TMenuItem;
+    ViewPopup: TPopupMenu;
+    popCopiarVer: TMenuItem;
     mnuVer: TMenuItem;
     mnuActualizar: TMenuItem;
     mnuAutoActualizar: TMenuItem;
@@ -112,6 +114,8 @@ type
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure AppDropFiles(Sender: TObject; const FileNames: array of string);
     procedure PageControl1Change(Sender: TObject);
+    procedure ViewPopupPopup(Sender: TObject);
+    procedure popCopiarVerClick(Sender: TObject);
     procedure SynEditorChange(Sender: TObject);
     procedure SynEditorStatusChange(Sender: TObject;
       Changes: TSynStatusChanges);
@@ -710,6 +714,17 @@ begin
   RefreshForActiveDoc;
   if (ActiveEditor <> nil) and ActiveEditor.CanSetFocus then
     ActiveEditor.SetFocus;
+end;
+
+procedure TFrmMain.ViewPopupPopup(Sender: TObject);
+begin
+  // Copiar solo con selección en el visor
+  popCopiarVer.Enabled := HtmlPreview.SelLength > 0;
+end;
+
+procedure TFrmMain.popCopiarVerClick(Sender: TObject);
+begin
+  HtmlPreview.CopyToClipboard;
 end;
 
 procedure TFrmMain.RefreshForActiveDoc;

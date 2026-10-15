@@ -60,6 +60,7 @@ object FrmMain: TFrmMain
       Width = 549
       Align = alClient
       TabOrder = 0
+      PopupMenu = ViewPopup
     end
   end
   object StatusBar1: TStatusBar
@@ -295,6 +296,15 @@ object FrmMain: TFrmMain
     OnTimer = PreviewTimerTimer
     Left = 360
     Top = 8
+  end
+  object ViewPopup: TPopupMenu
+    OnPopup = ViewPopupPopup
+    Left = 600
+    Top = 8
+    object popCopiarVer: TMenuItem
+      Caption = '&Copiar'
+      OnClick = popCopiarVerClick
+    end
   end
   object EditPopup: TPopupMenu
     Left = 520

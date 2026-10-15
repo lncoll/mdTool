@@ -13,6 +13,7 @@ Vista dividida: editas a la izquierda en `TSynEdit` y ves el resultado a la dere
 - Vista previa con retardo anti-rebote (400 ms), botón y tecla `F5`, con auto-actualización conmutable y scroll vertical sincronizado con el caret
 - Menú **Editar**: Deshacer / Rehacer, Cortar / Copiar / Pegar / Seleccionar todo, y submenú **Formato** (Títulos 1–3, Negrita, Cursiva, Tachado, Código, Enlace, Cita, Lista). Negrita/cursiva/tachado/código conmutan si el texto ya está marcado. En visor maximizado el menú se reduce a Buscar, Copiar y Volver a edición (el Copiar copia del visor)
 - Menú contextual con botón derecho en el editor
+- Menú contextual en el visor con Copiar (solo con selección)
 - Buscar (`Ctrl+F` / `F3` / `Mayús+F3`) y reemplazar (`Ctrl+H`) no-modal, con mayúsculas, palabras completas y regex
 - Fuente del editor configurable (persiste entre sesiones)
 - Tamaño del visor ajustable (persiste entre sesiones)
