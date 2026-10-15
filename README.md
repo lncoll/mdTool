@@ -25,6 +25,7 @@ derecha en `THtmlViewer`, con actualización automática.
   bloques de código y citas con fondo propio, tablas con rejilla simple y
   filas alternadas
 - Barra de estado: fichero, modificado, línea/columna, zoom del visor
+- Arrastrar y soltar ficheros `.md` / `.markdown` / `.txt` sobre la ventana
 - Apertura desde línea de comandos: `mdtool documento.md`
 
 ## Atajos
@@ -100,6 +101,6 @@ synmarkdown.pas highlighter Markdown para SynEdit
 - [ ] Task-lists y footnotes GFM
 - [ ] Buscar / reemplazar
 - [ ] Pestañas multi-documento
-- [ ] Arrastrar y soltar `.md`
+- [x] Arrastrar y soltar `.md` (`Application.OnDropFiles`)
 - [ ] Tema oscuro
 - [ ] Exportar a PDF

@@ -91,6 +91,7 @@ type
     procedure FormDestroy(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure AppDropFiles(Sender: TObject; const FileNames: array of string);
     procedure SynEditorChange(Sender: TObject);
     procedure SynEditorStatusChange(Sender: TObject;
       Changes: TSynStatusChanges);
@@ -146,6 +147,7 @@ type
     procedure ApplyHeading(ALevel: Integer);
   public
     property FileName: string read FFileName;
+    procedure OpenFile(const AFile: string);
   end;
 
 var
@@ -207,6 +209,7 @@ begin
   mnuAutoActualizar.Checked := True;
   PreviewTimer.Interval := 400;
   PreviewTimer.Enabled := False;
+  Application.OnDropFiles := @AppDropFiles;
   if (ParamCount >= 1) and FileExists(ParamStr(1)) then
     LoadMdFile(ParamStr(1))
   else
@@ -231,6 +234,7 @@ end;
 
 procedure TFrmMain.FormDestroy(Sender: TObject);
 begin
+  Application.OnDropFiles := nil;
   SavePrefs;
 end;
 
@@ -383,10 +387,36 @@ end;
 
 procedure TFrmMain.mnuAbrirClick(Sender: TObject);
 begin
+  if OpenDialog1.Execute then
+    OpenFile(OpenDialog1.FileName);
+end;
+
+procedure TFrmMain.OpenFile(const AFile: string);
+begin
   if not CheckSaveChanges then
     Exit;
-  if OpenDialog1.Execute then
-    LoadMdFile(OpenDialog1.FileName);
+  LoadMdFile(AFile);
+end;
+
+procedure TFrmMain.AppDropFiles(Sender: TObject; const FileNames: array of string);
+var
+  i: Integer;
+  Ext: string;
+begin
+  for i := 0 to High(FileNames) do
+  begin
+    if not FileExists(FileNames[i]) then
+      Continue;
+    Ext := LowerCase(ExtractFileExt(FileNames[i]));
+    if (Ext = '.md') or (Ext = '.markdown') or (Ext = '.mdown') or
+      (Ext = '.txt') then
+    begin
+      OpenFile(FileNames[i]);
+      BringToFront;
+      Exit;
+    end;
+  end;
+  // Sin ficheros válidos: se ignora el drop en silencio
 end;
 
 procedure TFrmMain.mnuGuardarClick(Sender: TObject);
