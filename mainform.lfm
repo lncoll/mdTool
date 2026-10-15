@@ -26,78 +26,14 @@ object FrmMain: TFrmMain
     ClientHeight = 678
     ClientWidth = 545
     TabOrder = 1
-    object SynEditor: TSynEdit
+    object PageControl1: TPageControl
       Left = 0
       Height = 678
       Top = 0
       Width = 545
       Align = alClient
-      Font.Height = -13
-      Font.Name = 'Monospace'
-      Font.Pitch = fpFixed
-      Font.Quality = fqNonAntialiased
-      ParentColor = False
-      ParentFont = False
-      PopupMenu = EditPopup
       TabOrder = 0
-      Gutter.Width = 57
-      RightGutter.Width = 0
-      VisibleSpecialChars = [vscSpace, vscTabAtLast]
-      SelectedColor.BackPriority = 50
-      SelectedColor.ForePriority = 50
-      SelectedColor.FramePriority = 50
-      SelectedColor.BoldPriority = 50
-      SelectedColor.ItalicPriority = 50
-      SelectedColor.UnderlinePriority = 50
-      SelectedColor.StrikeOutPriority = 50
-      BracketHighlightStyle = sbhsBoth
-      BracketMatchColor.Background = clNone
-      BracketMatchColor.Foreground = clNone
-      BracketMatchColor.Style = [fsBold]
-      FoldedCodeColor.Background = clNone
-      FoldedCodeColor.Foreground = clGray
-      FoldedCodeColor.FrameColor = clGray
-      MouseLinkColor.Background = clNone
-      MouseLinkColor.Foreground = clBlue
-      LineHighlightColor.Background = clNone
-      LineHighlightColor.Foreground = clNone
-      OnChange = SynEditorChange
-      OnStatusChange = SynEditorStatusChange
-      object SynLeftGutterPartList1: TSynGutterPartList
-        object SynGutterMarks1: TSynGutterMarks
-          Width = 24
-          MaxExtraMarksColums = 0
-          Options = [sgmoDeDuplicateMarksOnOverflow]
-          MarkupInfo.Background = clBtnFace
-          MarkupInfo.Foreground = clNone
-        end
-        object SynGutterLineNumber1: TSynGutterLineNumber
-          Width = 17
-          MarkupInfo.Background = clBtnFace
-          MarkupInfo.Foreground = clNone
-          DigitCount = 2
-          ShowOnlyLineNumbersMultiplesOf = 1
-          ZeroStart = False
-          LeadingZeros = False
-        end
-        object SynGutterChanges1: TSynGutterChanges
-          Width = 4
-          ModifiedColor = 59900
-          SavedColor = clGreen
-          MarkupInfo.Background = clNone
-          MarkupInfo.Foreground = clGreen
-          MarkupInfo.FrameColor = 59900
-        end
-        object SynGutterSeparator1: TSynGutterSeparator
-          Width = 2
-          MarkupInfo.Background = clWhite
-          MarkupInfo.Foreground = clGray
-        end
-        object SynGutterCodeFolding1: TSynGutterCodeFolding
-          MarkupInfo.Background = clNone
-          MarkupInfo.Foreground = clGray
-        end
-      end
+      OnChange = PageControl1Change
     end
   end
   object Splitter1: TSplitter
@@ -148,6 +84,10 @@ object FrmMain: TFrmMain
         Caption = '&Abrir...'
         ShortCut = 16463
         OnClick = mnuAbrirClick
+      end
+      object mnuCerrarTab: TMenuItem
+        Caption = '&Cerrar pestaña'
+        OnClick = mnuCerrarTabClick
       end
       object mnuGuardar: TMenuItem
         Caption = '&Guardar'

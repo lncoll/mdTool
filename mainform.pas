@@ -11,6 +11,14 @@ uses
 
 type
 
+  { TDocInfo }
+
+  TDocInfo = class
+    Editor: TSynEdit;
+    FileName: string;
+    Modified: Boolean;
+  end;
+
   { TFrmMain }
 
   TFrmMain = class(TForm)
@@ -18,6 +26,7 @@ type
     mnuArchivo: TMenuItem;
     mnuNuevo: TMenuItem;
     mnuAbrir: TMenuItem;
+    mnuCerrarTab: TMenuItem;
     mnuGuardar: TMenuItem;
     mnuGuardarComo: TMenuItem;
     mnuExportarHtml: TMenuItem;
@@ -87,7 +96,7 @@ type
     mnuAyuda: TMenuItem;
     mnuAcercaDe: TMenuItem;
     pnlEditor: TPanel;
-    SynEditor: TSynEdit;
+    PageControl1: TPageControl;
     Splitter1: TSplitter;
     pnlPreview: TPanel;
     HtmlPreview: THtmlViewer;
@@ -102,12 +111,14 @@ type
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure AppDropFiles(Sender: TObject; const FileNames: array of string);
+    procedure PageControl1Change(Sender: TObject);
     procedure SynEditorChange(Sender: TObject);
     procedure SynEditorStatusChange(Sender: TObject;
       Changes: TSynStatusChanges);
     procedure PreviewTimerTimer(Sender: TObject);
     procedure mnuNuevoClick(Sender: TObject);
     procedure mnuAbrirClick(Sender: TObject);
+    procedure mnuCerrarTabClick(Sender: TObject);
     procedure mnuGuardarClick(Sender: TObject);
     procedure mnuGuardarComoClick(Sender: TObject);
     procedure mnuExportarHtmlClick(Sender: TObject);
@@ -140,20 +151,25 @@ type
     procedure mnuMaxVisorClick(Sender: TObject);
     procedure mnuAcercaDeClick(Sender: TObject);
   private
-    FFileName: string;
-    FModified: Boolean;
     FLoading: Boolean;
     FViewerFontSize: Integer;
     FViewerMax: Boolean;
+    FEditorFontName: string;
+    FEditorFontSize: Integer;
     FMdHighlighter: TSynMarkdownSyn;
     FFindText: string;
     FFindOpts: TSynSearchOptions;
     FReplaceText: string;
-    procedure SetFileName(const AValue: string);
-    procedure SetModified(AValue: Boolean);
-    function CheckSaveChanges: Boolean;
-    procedure LoadMdFile(const AFile: string);
-    procedure SaveMdFile(const AFile: string);
+    procedure SetDocFileName(Doc: TDocInfo; const AValue: string);
+    procedure SetDocModified(Doc: TDocInfo; AValue: Boolean);
+    procedure RefreshDocTitle(Doc: TDocInfo);
+    procedure RefreshForActiveDoc;
+    function CheckDocSave(Doc: TDocInfo): Boolean;
+    function SaveDocFile(Doc: TDocInfo): Boolean;
+    function NewDocTab(const AFileName, AContent: string): TDocInfo;
+    procedure CloseDocTab(APage: TTabSheet);
+    function GetFileName: string;
+    procedure OpenFilesFromParams;
     procedure UpdatePreview;
     procedure UpdateCaption;
     procedure UpdateStatus;
@@ -170,7 +186,9 @@ type
     procedure ApplyHeading(ALevel: Integer);
     function MatchSelected: Boolean;
   public
-    property FileName: string read FFileName;
+    property FileName: string read GetFileName;
+    function ActiveDoc: TDocInfo;
+    function ActiveEditor: TSynEdit;
     procedure OpenFile(const AFile: string);
     procedure SetFind(const AText: string; AOptions: TSynSearchOptions;
       const AReplace: string);
@@ -191,10 +209,15 @@ uses
 
 {$R *.lfm}
 
+const
+  SAMPLE_TEXT = '# mdTool' + LineEnding + LineEnding +
+    'Editor / visor de Markdown.' + LineEnding + LineEnding +
+    '- Edita a la izquierda' + LineEnding +
+    '- Vista previa a la derecha' + LineEnding + LineEnding +
+    '**Abrir**, **Guardar** y **Exportar a HTML** desde el menú Archivo.';
+
 procedure TFrmMain.FormCreate(Sender: TObject);
 begin
-  FFileName := '';
-  FModified := False;
   FLoading := False;
   FViewerFontSize := 12;
   // StatusBar con 4 paneles (fichero / estado / cursor / zoom visor).
@@ -218,16 +241,15 @@ begin
   end;
   // El constructor de TSynEdit omite los bindings de teclado cuando el
   // componente se crea por streaming (csLoading); hay que restaurarlos.
-  SynEditor.SetDefaultKeystrokes;
+  // (Se aplica por editor al crearlo en NewDocTab.)
   FMdHighlighter := TSynMarkdownSyn.Create(Self);
-  SynEditor.Highlighter := FMdHighlighter;
   OpenDialog1.Filter := 'Markdown (*.md;*.markdown)|*.md;*.markdown|Todos (*.*)|*.*';
   SaveDialog1.Filter := OpenDialog1.Filter;
   SaveDialog1.DefaultExt := 'md';
   SaveHtmlDialog.Filter := 'HTML (*.html)|*.html|Todos (*.*)|*.*';
   SaveHtmlDialog.DefaultExt := 'html';
-  LoadPrefs;
-  ApplyEditorFont;
+  OpenDialog1.Options := OpenDialog1.Options + [ofAllowMultiSelect];
+  LoadPrefs; // fuente del editor + zoom del visor
   ApplyViewerZoom;
   // Atajos visibles en el menú. Los de zoom se dibujan en el Caption
   // (tras tab) porque '+' no existe como tecla LCL y mostraría NumPlus.
@@ -242,40 +264,51 @@ begin
   mnuZoomMenos.ShortCut := 0;
   mnuZoomReset.ShortCut := ShortCut(Ord('0'), [ssCtrl]);
   mnuMaxVisor.ShortCut := ShortCut(VK_F11, []);
+  mnuCerrarTab.ShortCut := ShortCut(Ord('W'), [ssCtrl]);
+  mnuCerrarTab.ShortCut := ShortCut(Ord('W'), [ssCtrl]);
   mnuAutoActualizar.Checked := True;
   PreviewTimer.Interval := 400;
   PreviewTimer.Enabled := False;
   Application.OnDropFiles := @AppDropFiles;
   if (ParamCount >= 1) and FileExists(ParamStr(1)) then
   begin
-    LoadMdFile(ParamStr(1));
+    OpenFilesFromParams;
     // Con fichero como parámetro se arranca con el visor maximizado
     SetViewerMax(True);
   end
   else
   begin
-    SynEditor.Lines.Text :=
-      '# mdTool' + LineEnding + LineEnding +
-      'Editor / visor de Markdown.' + LineEnding + LineEnding +
-      '- Edita a la izquierda' + LineEnding +
-      '- Vista previa a la derecha' + LineEnding + LineEnding +
-      '**Abrir**, **Guardar** y **Exportar a HTML** desde el menú Archivo.';
-    SetModified(False);
+    NewDocTab('', SAMPLE_TEXT);
     SetViewerMax(False);
   end;
-  UpdatePreview;
-  UpdateCaption;
-  UpdateStatus;
+  RefreshForActiveDoc;
 end;
 
 procedure TFrmMain.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
+var
+  i: Integer;
+  Doc: TDocInfo;
 begin
-  CanClose := CheckSaveChanges;
+  CanClose := True;
+  for i := 0 to PageControl1.PageCount - 1 do
+  begin
+    Doc := TDocInfo(PageControl1.Pages[i].Tag);
+    if (Doc <> nil) and Doc.Modified then
+      if not CheckDocSave(Doc) then
+      begin
+        CanClose := False;
+        Exit;
+      end;
+  end;
 end;
 
 procedure TFrmMain.FormDestroy(Sender: TObject);
+var
+  i: Integer;
 begin
   Application.OnDropFiles := nil;
+  for i := 0 to PageControl1.PageCount - 1 do
+    TDocInfo(PageControl1.Pages[i].Tag).Free;
   SavePrefs;
 end;
 
@@ -291,6 +324,17 @@ begin
       mnuBuscarAntClick(Self)
     else
       mnuBuscarSigClick(Self);
+    Key := 0;
+    Exit;
+  end;
+  if (Key = VK_TAB) and (ssCtrl in Shift) and not (ssAlt in Shift) and
+    not (ssMeta in Shift) then
+  begin
+    // Ctrl+Tab / Ctrl+Mayús+Tab: siguiente/anterior pestaña
+    if ssShift in Shift then
+      PageControl1.SelectNextPage(False)
+    else
+      PageControl1.SelectNextPage(True);
     Key := 0;
     Exit;
   end;
@@ -431,11 +475,18 @@ begin
 end;
 
 procedure TFrmMain.SynEditorChange(Sender: TObject);
+var
+  Doc: TDocInfo;
 begin
   if FLoading then
     Exit;
-  SetModified(True);
-  if mnuAutoActualizar.Checked then
+  if not (Sender is TSynEdit) then
+    Exit;
+  Doc := TDocInfo((Sender as TSynEdit).Tag);
+  if Doc = nil then
+    Exit;
+  SetDocModified(Doc, True);
+  if (Sender = ActiveEditor) and mnuAutoActualizar.Checked then
   begin
     PreviewTimer.Enabled := False;
     PreviewTimer.Enabled := True;
@@ -445,6 +496,8 @@ end;
 procedure TFrmMain.SynEditorStatusChange(Sender: TObject;
   Changes: TSynStatusChanges);
 begin
+  if Sender <> ActiveEditor then
+    Exit;
   UpdateStatus;
   if [scCaretY, scTopLine] * Changes <> [] then
     SyncPreviewScroll;
@@ -458,30 +511,51 @@ end;
 
 procedure TFrmMain.mnuNuevoClick(Sender: TObject);
 begin
-  if not CheckSaveChanges then
-    Exit;
-  FLoading := True;
-  try
-    SynEditor.Lines.Clear;
-  finally
-    FLoading := False;
-  end;
-  SetFileName('');
-  SetModified(False);
-  UpdatePreview;
+  NewDocTab('', '');
 end;
 
 procedure TFrmMain.mnuAbrirClick(Sender: TObject);
+var
+  i: Integer;
 begin
   if OpenDialog1.Execute then
-    OpenFile(OpenDialog1.FileName);
+    for i := 0 to OpenDialog1.Files.Count - 1 do
+      OpenFile(OpenDialog1.Files[i]);
+end;
+
+procedure TFrmMain.mnuCerrarTabClick(Sender: TObject);
+begin
+  CloseDocTab(PageControl1.ActivePage);
 end;
 
 procedure TFrmMain.OpenFile(const AFile: string);
+var
+  SL: TStringList;
 begin
-  if not CheckSaveChanges then
-    Exit;
-  LoadMdFile(AFile);
+  SL := TStringList.Create;
+  try
+    try
+      SL.LoadFromFile(AFile);
+    except
+      on E: Exception do
+      begin
+        ShowStatus('No se pudo abrir: ' + AFile);
+        Exit;
+      end;
+    end;
+    NewDocTab(AFile, SL.Text);
+  finally
+    SL.Free;
+  end;
+end;
+
+procedure TFrmMain.OpenFilesFromParams;
+var
+  i: Integer;
+begin
+  for i := 1 to ParamCount do
+    if FileExists(ParamStr(i)) then
+      OpenFile(ParamStr(i));
 end;
 
 procedure TFrmMain.AppDropFiles(Sender: TObject; const FileNames: array of string);
@@ -496,27 +570,238 @@ begin
     Ext := LowerCase(ExtractFileExt(FileNames[i]));
     if (Ext = '.md') or (Ext = '.markdown') or (Ext = '.mdown') or
       (Ext = '.txt') then
-    begin
       OpenFile(FileNames[i]);
-      BringToFront;
-      Exit;
-    end;
   end;
+  BringToFront;
   // Sin ficheros válidos: se ignora el drop en silencio
 end;
 
 procedure TFrmMain.mnuGuardarClick(Sender: TObject);
 begin
-  if FFileName = '' then
-    mnuGuardarComoClick(Sender)
-  else
-    SaveMdFile(FFileName);
+  SaveDocFile(ActiveDoc);
 end;
 
 procedure TFrmMain.mnuGuardarComoClick(Sender: TObject);
+var
+  Doc: TDocInfo;
 begin
+  Doc := ActiveDoc;
+  if Doc = nil then
+    Exit;
+  SaveDialog1.FileName := Doc.FileName;
   if SaveDialog1.Execute then
-    SaveMdFile(SaveDialog1.FileName);
+  begin
+    SetDocFileName(Doc, SaveDialog1.FileName);
+    Doc.Editor.Lines.SaveToFile(Doc.FileName);
+    SetDocModified(Doc, False);
+  end;
+end;
+
+function TFrmMain.ActiveDoc: TDocInfo;
+begin
+  if (PageControl1.ActivePage <> nil) and
+    (PageControl1.ActivePage.Tag <> 0) then
+    Result := TDocInfo(PageControl1.ActivePage.Tag)
+  else
+    Result := nil;
+end;
+
+function TFrmMain.ActiveEditor: TSynEdit;
+var
+  Doc: TDocInfo;
+begin
+  Doc := ActiveDoc;
+  if Doc = nil then
+    Result := nil
+  else
+    Result := Doc.Editor;
+end;
+
+function TFrmMain.GetFileName: string;
+var
+  Doc: TDocInfo;
+begin
+  Doc := ActiveDoc;
+  if Doc = nil then
+    Result := ''
+  else
+    Result := Doc.FileName;
+end;
+
+function TFrmMain.NewDocTab(const AFileName, AContent: string): TDocInfo;
+var
+  Sheet: TTabSheet;
+  Ed: TSynEdit;
+begin
+  Sheet := TTabSheet.Create(Self);
+  Sheet.PageControl := PageControl1;
+  Ed := TSynEdit.Create(Sheet);
+  Ed.Parent := Sheet;
+  Ed.Align := alClient;
+  Ed.Font.Name := FEditorFontName;
+  Ed.Font.Size := FEditorFontSize;
+  Ed.Font.Pitch := fpFixed;
+  Ed.PopupMenu := EditPopup;
+  Ed.Highlighter := FMdHighlighter;
+  Ed.SetDefaultKeystrokes;
+  Ed.OnChange := @SynEditorChange;
+  Ed.OnStatusChange := @SynEditorStatusChange;
+  Ed.TabOrder := 0;
+  Result := TDocInfo.Create;
+  Result.Editor := Ed;
+  Result.FileName := '';
+  Result.Modified := False;
+  Ed.Tag := PtrInt(Result);
+  Sheet.Tag := PtrInt(Result);
+  FLoading := True;
+  try
+    Ed.Lines.Text := AContent;
+  finally
+    FLoading := False;
+  end;
+  SetDocFileName(Result, AFileName);
+  PageControl1.ActivePage := Sheet;
+  // Solo si es enfocable (ni en FormCreate ni en visor maximizado)
+  if Ed.CanSetFocus then
+    Ed.SetFocus;
+end;
+
+procedure TFrmMain.CloseDocTab(APage: TTabSheet);
+var
+  Doc: TDocInfo;
+  Ed: TSynEdit;
+begin
+  if APage = nil then
+    Exit;
+  Doc := TDocInfo(APage.Tag);
+  if (Doc <> nil) and Doc.Modified then
+    if not CheckDocSave(Doc) then
+      Exit; // el usuario canceló
+  if PageControl1.PageCount <= 1 then
+  begin
+    // Siempre queda ≥1 pestaña: vaciar en lugar de cerrar
+    if Doc <> nil then
+    begin
+      Ed := Doc.Editor;
+      FLoading := True;
+      try
+        Ed.Lines.Clear;
+      finally
+        FLoading := False;
+      end;
+      SetDocFileName(Doc, '');
+      SetDocModified(Doc, False);
+      RefreshForActiveDoc;
+    end;
+    Exit;
+  end;
+  APage.Tag := 0;
+  if Doc <> nil then
+  begin
+    Doc.Editor.Tag := 0;
+    Doc.Free;
+  end;
+  APage.Free;
+  RefreshForActiveDoc;
+end;
+
+procedure TFrmMain.PageControl1Change(Sender: TObject);
+begin
+  RefreshForActiveDoc;
+  if (ActiveEditor <> nil) and ActiveEditor.CanSetFocus then
+    ActiveEditor.SetFocus;
+end;
+
+procedure TFrmMain.RefreshForActiveDoc;
+begin
+  UpdateCaption;
+  UpdateStatus;
+  UpdatePreview;
+end;
+
+procedure TFrmMain.SetDocFileName(Doc: TDocInfo; const AValue: string);
+begin
+  if Doc = nil then
+    Exit;
+  Doc.FileName := AValue;
+  RefreshDocTitle(Doc);
+  if Doc = ActiveDoc then
+    UpdateCaption;
+end;
+
+procedure TFrmMain.SetDocModified(Doc: TDocInfo; AValue: Boolean);
+begin
+  if Doc = nil then
+    Exit;
+  if Doc.Modified = AValue then
+    Exit;
+  Doc.Modified := AValue;
+  RefreshDocTitle(Doc);
+  if Doc = ActiveDoc then
+  begin
+    UpdateCaption;
+    UpdateStatus;
+  end;
+end;
+
+procedure TFrmMain.RefreshDocTitle(Doc: TDocInfo);
+var
+  i: Integer;
+  T: string;
+begin
+  if Doc = nil then
+    Exit;
+  if Doc.FileName = '' then
+    T := 'sin título'
+  else
+    T := ExtractFileName(Doc.FileName);
+  if Doc.Modified then
+    T := T + ' *';
+  for i := 0 to PageControl1.PageCount - 1 do
+    if PageControl1.Pages[i].Tag = PtrInt(Doc) then
+    begin
+      PageControl1.Pages[i].Caption := T;
+      Exit;
+    end;
+end;
+
+function TFrmMain.CheckDocSave(Doc: TDocInfo): Boolean;
+var
+  R: Integer;
+  T: string;
+begin
+  Result := True;
+  if (Doc = nil) or not Doc.Modified then
+    Exit;
+  if Doc.FileName = '' then
+    T := 'sin título'
+  else
+    T := ExtractFileName(Doc.FileName);
+  // Traer al frente la pestaña afectada para contexto
+  R := MessageDlg('Guardar cambios',
+    'El documento "' + T + '" ha cambiado. ¿Guardar antes de continuar?',
+    mtConfirmation, [mbYes, mbNo, mbCancel], 0);
+  if R = mrYes then
+    Result := SaveDocFile(Doc)
+  else if R = mrCancel then
+    Result := False;
+end;
+
+function TFrmMain.SaveDocFile(Doc: TDocInfo): Boolean;
+begin
+  Result := False;
+  if Doc = nil then
+    Exit;
+  if Doc.FileName = '' then
+  begin
+    SaveDialog1.FileName := '';
+    if not SaveDialog1.Execute then
+      Exit;
+    SetDocFileName(Doc, SaveDialog1.FileName);
+  end;
+  Doc.Editor.Lines.SaveToFile(Doc.FileName);
+  SetDocModified(Doc, False);
+  Result := True;
 end;
 
 procedure TFrmMain.mnuExportarHtmlClick(Sender: TObject);
@@ -527,11 +812,11 @@ var
 begin
   if SaveHtmlDialog.Execute then
   begin
-    if FFileName <> '' then
-      Title := ChangeFileExt(ExtractFileName(FFileName), '')
+    if (ActiveDoc <> nil) and (ActiveDoc.FileName <> '') then
+      Title := ChangeFileExt(ExtractFileName(ActiveDoc.FileName), '')
     else
       Title := 'mdTool';
-    Html := MarkdownToHtmlPage(SynEditor.Lines.Text, Title);
+    Html := MarkdownToHtmlPage(ActiveEditor.Lines.Text, Title);
     SL := TStringList.Create;
     try
       SL.Text := Html;
@@ -550,35 +835,40 @@ end;
 
 procedure TFrmMain.mnuDeshacerClick(Sender: TObject);
 begin
-  SynEditor.Undo;
+  if ActiveEditor <> nil then
+    ActiveEditor.Undo;
 end;
 
 procedure TFrmMain.mnuRehacerClick(Sender: TObject);
 begin
-  SynEditor.Redo;
+  if ActiveEditor <> nil then
+    ActiveEditor.Redo;
 end;
 
 procedure TFrmMain.mnuCortarClick(Sender: TObject);
 begin
-  SynEditor.CutToClipboard;
+  if ActiveEditor <> nil then
+    ActiveEditor.CutToClipboard;
 end;
 
 procedure TFrmMain.mnuCopiarClick(Sender: TObject);
 begin
   if FViewerMax then
     HtmlPreview.CopyToClipboard
-  else
-    SynEditor.CopyToClipboard;
+  else if ActiveEditor <> nil then
+    ActiveEditor.CopyToClipboard;
 end;
 
 procedure TFrmMain.mnuPegarClick(Sender: TObject);
 begin
-  SynEditor.PasteFromClipboard;
+  if ActiveEditor <> nil then
+    ActiveEditor.PasteFromClipboard;
 end;
 
 procedure TFrmMain.mnuSelTodoClick(Sender: TObject);
 begin
-  SynEditor.SelectAll;
+  if ActiveEditor <> nil then
+    ActiveEditor.SelectAll;
 end;
 
 procedure TFrmMain.mnuBuscarClick(Sender: TObject);
@@ -618,9 +908,11 @@ end;
 function TFrmMain.SelectedOrEmpty: string;
 begin
   Result := '';
-  if SynEditor.SelAvail then
+  if ActiveEditor = nil then
+    Exit;
+  if ActiveEditor.SelAvail then
   begin
-    Result := SynEditor.SelText;
+    Result := ActiveEditor.SelText;
     if (Pos(#10, Result) > 0) or (Pos(#13, Result) > 0) or
       (Length(Result) > 80) then
       Result := '';
@@ -639,7 +931,7 @@ var
   Saved: TPoint;
 begin
   Result := False;
-  if FFindText = '' then
+  if (FFindText = '') or (ActiveEditor = nil) then
     Exit;
   Opts := FFindOpts - [ssoReplace, ssoReplaceAll, ssoEntireScope, ssoPrompt];
   if ABackwards then
@@ -647,18 +939,18 @@ begin
   else
     Exclude(Opts, ssoBackwards);
   try
-    Result := SynEditor.SearchReplace(FFindText, '', Opts) > 0;
+    Result := ActiveEditor.SearchReplace(FFindText, '', Opts) > 0;
     if not Result then
     begin
       // Segunda pasada con wrap desde el otro extremo
-      Saved := SynEditor.CaretXY;
+      Saved := ActiveEditor.CaretXY;
       if ABackwards then
-        SynEditor.CaretXY :=
-          Point(Length(SynEditor.Lines[SynEditor.Lines.Count - 1]) + 1,
-          SynEditor.Lines.Count)
+        ActiveEditor.CaretXY :=
+          Point(Length(ActiveEditor.Lines[ActiveEditor.Lines.Count - 1]) + 1,
+          ActiveEditor.Lines.Count)
       else
-        SynEditor.CaretXY := Point(1, 1);
-      Result := SynEditor.SearchReplace(FFindText, '', Opts) > 0;
+        ActiveEditor.CaretXY := Point(1, 1);
+      Result := ActiveEditor.SearchReplace(FFindText, '', Opts) > 0;
       if Result then
       begin
         if ABackwards then
@@ -668,7 +960,7 @@ begin
       end
       else
       begin
-        SynEditor.CaretXY := Saved;
+        ActiveEditor.CaretXY := Saved;
         ShowStatus('No encontrado: ' + FFindText);
       end;
     end;
@@ -683,9 +975,11 @@ var
   S: string;
 begin
   Result := False;
-  if (FFindText = '') or not SynEditor.SelAvail then
+  if ActiveEditor = nil then
     Exit;
-  S := SynEditor.SelText;
+  if (FFindText = '') or not ActiveEditor.SelAvail then
+    Exit;
+  S := ActiveEditor.SelText;
   if ssoMatchCase in FFindOpts then
     Result := S = FFindText
   else
@@ -695,16 +989,16 @@ end;
 function TFrmMain.ReplaceCurrent: Boolean;
 begin
   Result := False;
-  if FFindText = '' then
+  if (FFindText = '') or (ActiveEditor = nil) then
     Exit;
   try
     if MatchSelected then
     begin
-      SynEditor.BeginUndoBlock;
+      ActiveEditor.BeginUndoBlock;
       try
-        SynEditor.SelText := FReplaceText;
+        ActiveEditor.SelText := FReplaceText;
       finally
-        SynEditor.EndUndoBlock;
+        ActiveEditor.EndUndoBlock;
       end;
       ShowStatus('Reemplazado');
     end;
@@ -720,16 +1014,16 @@ var
   Opts: TSynSearchOptions;
 begin
   Result := 0;
-  if FFindText = '' then
+  if (FFindText = '') or (ActiveEditor = nil) then
     Exit;
   Opts := FFindOpts + [ssoReplace, ssoReplaceAll, ssoEntireScope] -
     [ssoBackwards, ssoPrompt];
   try
-    SynEditor.BeginUndoBlock;
+    ActiveEditor.BeginUndoBlock;
     try
-      Result := SynEditor.SearchReplace(FFindText, FReplaceText, Opts);
+      Result := ActiveEditor.SearchReplace(FFindText, FReplaceText, Opts);
     finally
-      SynEditor.EndUndoBlock;
+      ActiveEditor.EndUndoBlock;
     end;
     if Result = 0 then
       ShowStatus('No encontrado: ' + FFindText)
@@ -773,19 +1067,21 @@ var
   P: TPoint;
   S: string;
 begin
-  if SynEditor.SelAvail then
+  if ActiveEditor = nil then
+    Exit;
+  if ActiveEditor.SelAvail then
   begin
-    S := SynEditor.SelText;
-    SynEditor.SelText := '[' + S + '](url)';
+    S := ActiveEditor.SelText;
+    ActiveEditor.SelText := '[' + S + '](url)';
     // Deja el caret tras el enlace
   end
   else
   begin
-    P := SynEditor.CaretXY;
-    SynEditor.InsertTextAtCaret('[texto](url)');
+    P := ActiveEditor.CaretXY;
+    ActiveEditor.InsertTextAtCaret('[texto](url)');
     // Selecciona "texto" para sustituirlo directamente
-    SynEditor.BlockBegin := Point(P.X + 1, P.Y);
-    SynEditor.BlockEnd := Point(P.X + 6, P.Y);
+    ActiveEditor.BlockBegin := Point(P.X + 1, P.Y);
+    ActiveEditor.BlockEnd := Point(P.X + 6, P.Y);
   end;
 end;
 
@@ -801,6 +1097,8 @@ end;
 
 procedure TFrmMain.ApplyHeading(ALevel: Integer);
 begin
+  if ActiveEditor = nil then
+    Exit;
   if (ALevel >= 1) and (ALevel <= 3) then
     PrefixLines('', ALevel);
 end;
@@ -810,27 +1108,29 @@ var
   S: string;
   P: TPoint;
 begin
-  if SynEditor.SelAvail then
+  if ActiveEditor = nil then
+    Exit;
+  if ActiveEditor.SelAvail then
   begin
-    S := SynEditor.SelText;
+    S := ActiveEditor.SelText;
     // Toggle: si ya está envuelto, lo desenvuelve
     if (Length(S) >= Length(APrefix) + Length(ASuffix)) and
       (Copy(S, 1, Length(APrefix)) = APrefix) and
       (Copy(S, Length(S) - Length(ASuffix) + 1, Length(ASuffix)) = ASuffix) then
-      SynEditor.SelText :=
+      ActiveEditor.SelText :=
         Copy(S, Length(APrefix) + 1, Length(S) - Length(APrefix) - Length(ASuffix))
     else
-      SynEditor.SelText := APrefix + S + ASuffix;
+      ActiveEditor.SelText := APrefix + S + ASuffix;
   end
   else
   begin
-    SynEditor.InsertTextAtCaret(APrefix + ASuffix);
+    ActiveEditor.InsertTextAtCaret(APrefix + ASuffix);
     // Caret entre marca de apertura y cierre
-    P := SynEditor.CaretXY;
+    P := ActiveEditor.CaretXY;
     P.X := P.X - Length(ASuffix);
     if P.X < 1 then
       P.X := 1;
-    SynEditor.CaretXY := P;
+    ActiveEditor.CaretXY := P;
   end;
 end;
 
@@ -840,25 +1140,27 @@ var
   L, Rest: string;
   i: Integer;
 begin
-  if SynEditor.SelAvail then
+  if ActiveEditor = nil then
+    Exit;
+  if ActiveEditor.SelAvail then
   begin
-    Y1 := SynEditor.BlockBegin.Y;
-    Y2 := SynEditor.BlockEnd.Y;
-    if (Y2 > Y1) and (SynEditor.BlockEnd.X = 1) then
+    Y1 := ActiveEditor.BlockBegin.Y;
+    Y2 := ActiveEditor.BlockEnd.Y;
+    if (Y2 > Y1) and (ActiveEditor.BlockEnd.X = 1) then
       Dec(Y2); // la selección termina al inicio de línea: no tocarla
   end
   else
   begin
-    Y1 := SynEditor.CaretXY.Y;
+    Y1 := ActiveEditor.CaretXY.Y;
     Y2 := Y1;
   end;
-  SynEditor.BeginUndoBlock;
+  ActiveEditor.BeginUndoBlock;
   try
     for Y := Y1 to Y2 do
     begin
-      if (Y < 1) or (Y > SynEditor.Lines.Count) then
+      if (Y < 1) or (Y > ActiveEditor.Lines.Count) then
         Continue;
-      L := SynEditor.Lines[Y - 1];
+      L := ActiveEditor.Lines[Y - 1];
       if AHeadingLevel > 0 then
       begin
         // Quita '#' previos y aplica el nivel pedido
@@ -868,18 +1170,23 @@ begin
         while (i <= Length(L)) and (L[i] = ' ') do
           Inc(i);
         Rest := Copy(L, i, MaxInt);
-        SynEditor.Lines[Y - 1] := StringOfChar('#', AHeadingLevel) + ' ' + Rest;
+        ActiveEditor.Lines[Y - 1] := StringOfChar('#', AHeadingLevel) + ' ' + Rest;
       end
       else if (TrimLeft(L) = '') or (Copy(TrimLeft(L), 1, Length(APrefix)) = APrefix) then
       begin
         // Línea vacía o ya prefijada: no duplicar
       end
       else
-        SynEditor.Lines[Y - 1] := APrefix + L;
+        ActiveEditor.Lines[Y - 1] := APrefix + L;
     end;
   finally
-    SynEditor.EndUndoBlock;
+    ActiveEditor.EndUndoBlock;
   end;
+  // La asignación directa a Lines[] no dispara OnChange: marcar y
+  // refrescar a mano.
+  SetDocModified(ActiveDoc, True);
+  if mnuAutoActualizar.Checked then
+    UpdatePreview;
 end;
 
 procedure TFrmMain.mnuActualizarClick(Sender: TObject);
@@ -896,10 +1203,13 @@ end;
 
 procedure TFrmMain.mnuFuenteEditorClick(Sender: TObject);
 begin
-  FontDialog1.Font.Assign(SynEditor.Font);
+  if ActiveEditor = nil then
+    Exit;
+  FontDialog1.Font.Assign(ActiveEditor.Font);
   if FontDialog1.Execute then
   begin
-    SynEditor.Font.Assign(FontDialog1.Font);
+    FEditorFontName := FontDialog1.Font.Name;
+    FEditorFontSize := FontDialog1.Font.Size;
     ApplyEditorFont;
     SavePrefs;
     UpdateStatus;
@@ -979,75 +1289,18 @@ begin
     'Editor: SynEdit · Preview: TIpHtmlPanel.');
 end;
 
-procedure TFrmMain.SetFileName(const AValue: string);
-begin
-  FFileName := AValue;
-  UpdateCaption;
-  UpdateStatus;
-end;
-
-procedure TFrmMain.SetModified(AValue: Boolean);
-begin
-  FModified := AValue;
-  UpdateCaption;
-  UpdateStatus;
-end;
-
-function TFrmMain.CheckSaveChanges: Boolean;
-var
-  R: Integer;
-begin
-  Result := True;
-  if not FModified then
-    Exit;
-  R := MessageDlg('Guardar cambios',
-    'El documento ha cambiado. ¿Guardar antes de continuar?',
-    mtConfirmation, [mbYes, mbNo, mbCancel], 0);
-  if R = mrYes then
-  begin
-    mnuGuardarClick(Self);
-    Result := not FModified; // si sigue modificado, canceló el diálogo
-  end
-  else if R = mrCancel then
-    Result := False;
-end;
-
-procedure TFrmMain.LoadMdFile(const AFile: string);
-var
-  SL: TStringList;
-begin
-  SL := TStringList.Create;
-  try
-    SL.LoadFromFile(AFile);
-    FLoading := True;
-    try
-      SynEditor.Lines.Assign(SL);
-    finally
-      FLoading := False;
-    end;
-  finally
-    SL.Free;
-  end;
-  SetFileName(AFile);
-  SetModified(False);
-  UpdatePreview;
-end;
-
-procedure TFrmMain.SaveMdFile(const AFile: string);
-begin
-  SynEditor.Lines.SaveToFile(AFile);
-  SetFileName(AFile);
-  SetModified(False);
-end;
-
 procedure TFrmMain.UpdatePreview;
 var
   Html: string;
+  Ed: TSynEdit;
 begin
+  Ed := ActiveEditor;
+  if Ed = nil then
+    Exit;
   Html := '<!DOCTYPE html>' + LineEnding +
     '<html><head><meta charset="utf-8"><style>' + MarkdownCss +
     '</style></head><body>' + LineEnding +
-    MarkdownToHtml(SynEditor.Lines.Text) +
+    MarkdownToHtml(Ed.Lines.Text) +
     LineEnding + '</body></html>';
   try
     HtmlPreview.LoadFromString(Html);
@@ -1061,13 +1314,15 @@ end;
 
 procedure TFrmMain.UpdateCaption;
 var
+  Doc: TDocInfo;
   DocName: string;
 begin
-  if FFileName = '' then
+  Doc := ActiveDoc;
+  if (Doc = nil) or (Doc.FileName = '') then
     DocName := 'sin título'
   else
-    DocName := ExtractFileName(FFileName);
-  if FModified then
+    DocName := ExtractFileName(Doc.FileName);
+  if (Doc <> nil) and Doc.Modified then
     Caption := 'mdTool — ' + DocName + ' *'
   else
     Caption := 'mdTool — ' + DocName;
@@ -1076,18 +1331,27 @@ end;
 procedure TFrmMain.UpdateStatus;
 var
   Pos: TPoint;
+  Doc: TDocInfo;
+  Ed: TSynEdit;
 begin  if StatusBar1.Panels.Count < 4 then
     Exit; // FormCreate aún no ha creado los paneles
-  if FFileName = '' then
+  Doc := ActiveDoc;
+  Ed := ActiveEditor;
+  if (Doc = nil) or (Doc.FileName = '') then
     StatusBar1.Panels[0].Text := 'sin título'
   else
-    StatusBar1.Panels[0].Text := FFileName;
-  if FModified then
+    StatusBar1.Panels[0].Text := Doc.FileName;
+  if (Doc <> nil) and Doc.Modified then
     StatusBar1.Panels[1].Text := 'Modificado'
   else
     StatusBar1.Panels[1].Text := '';
-  Pos := SynEditor.CaretXY;
-  StatusBar1.Panels[2].Text := Format('Ln %d, Col %d', [Pos.Y, Pos.X]);
+  if Ed <> nil then
+  begin
+    Pos := Ed.CaretXY;
+    StatusBar1.Panels[2].Text := Format('Ln %d, Col %d', [Pos.Y, Pos.X]);
+  end
+  else
+    StatusBar1.Panels[2].Text := '';
   if StatusBar1.Panels.Count > 3 then
     StatusBar1.Panels[3].Text := Format('Visor %dpt (%d%%)',
       [FViewerFontSize, Round(FViewerFontSize / 12 * 100)]);
@@ -1097,15 +1361,19 @@ procedure TFrmMain.SyncPreviewScroll;
 var
   Frac: Double;
   Count: Integer;
+  Ed: TSynEdit;
 begin
   // Sincronía proporcional: la posición del caret en el editor
   // se refleja en el scroll vertical del visor (solo editor→visor,
   // sin bucles de realimentación).
-  Count := SynEditor.Lines.Count;
+  Ed := ActiveEditor;
+  if Ed = nil then
+    Exit;
+  Count := Ed.Lines.Count;
   if Count <= 1 then
     Frac := 0
   else
-    Frac := (SynEditor.CaretXY.Y - 1) / (Count - 1);
+    Frac := (Ed.CaretXY.Y - 1) / (Count - 1);
   if Frac < 0 then
     Frac := 0;
   if Frac > 1 then
@@ -1115,10 +1383,21 @@ begin
 end;
 
 procedure TFrmMain.ApplyEditorFont;
+var
+  i: Integer;
+  Doc: TDocInfo;
 begin
-  // SynEdit usa Font para todo el texto; fijamos pitch fijo si es mono
-  // pero respetamos la elección del usuario.
-  SynEditor.Font.Pitch := fpFixed;
+  // La fuente se aplica a todos los editores abiertos
+  for i := 0 to PageControl1.PageCount - 1 do
+  begin
+    Doc := TDocInfo(PageControl1.Pages[i].Tag);
+    if (Doc <> nil) and (Doc.Editor <> nil) then
+    begin
+      Doc.Editor.Font.Name := FEditorFontName;
+      Doc.Editor.Font.Size := FEditorFontSize;
+      Doc.Editor.Font.Pitch := fpFixed;
+    end;
+  end;
   UpdateStatus;
 end;
 
@@ -1140,16 +1419,16 @@ var
   Cfg: string;
 begin
   // Valores por defecto
-  SynEditor.Font.Name := 'Monospace';
-  SynEditor.Font.Size := 10;
+  FEditorFontName := 'Monospace';
+  FEditorFontSize := 10;
   FViewerFontSize := 12;
   Cfg := ConfigFile;
   if not FileExists(Cfg) then
     Exit;
   Ini := TIniFile.Create(Cfg);
   try
-    SynEditor.Font.Name := Ini.ReadString('Editor', 'FontName', SynEditor.Font.Name);
-    SynEditor.Font.Size := Ini.ReadInteger('Editor', 'FontSize', SynEditor.Font.Size);
+    FEditorFontName := Ini.ReadString('Editor', 'FontName', FEditorFontName);
+    FEditorFontSize := Ini.ReadInteger('Editor', 'FontSize', FEditorFontSize);
     FViewerFontSize := Ini.ReadInteger('Viewer', 'FontSize', FViewerFontSize);
     if FViewerFontSize < 8 then
       FViewerFontSize := 8;
@@ -1170,8 +1449,8 @@ begin
     ForceDirectories(ExtractFileDir(Cfg));
     Ini := TIniFile.Create(Cfg);
     try
-      Ini.WriteString('Editor', 'FontName', SynEditor.Font.Name);
-      Ini.WriteInteger('Editor', 'FontSize', SynEditor.Font.Size);
+      Ini.WriteString('Editor', 'FontName', FEditorFontName);
+      Ini.WriteInteger('Editor', 'FontSize', FEditorFontSize);
       Ini.WriteInteger('Viewer', 'FontSize', FViewerFontSize);
       Ini.UpdateFile;
     finally

@@ -9,3 +9,4 @@ link*.res
 *.dbg
 *.or
 *.lps
+*.log
