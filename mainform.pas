@@ -36,6 +36,8 @@ type
     mnuReemplazar: TMenuItem;
     mnuBuscarSig: TMenuItem;
     mnuBuscarAnt: TMenuItem;
+    mnuVolverEdicion: TMenuItem;
+    mnuSepEdMax: TMenuItem;
     mnuSepEd2: TMenuItem;
     mnuFormato: TMenuItem;
     mnuTitulo1: TMenuItem;
@@ -120,6 +122,7 @@ type
     procedure mnuReemplazarClick(Sender: TObject);
     procedure mnuBuscarSigClick(Sender: TObject);
     procedure mnuBuscarAntClick(Sender: TObject);
+    procedure mnuVolverEdicionClick(Sender: TObject);
     procedure mnuTituloClick(Sender: TObject);
     procedure mnuNegritaClick(Sender: TObject);
     procedure mnuCursivaClick(Sender: TObject);
@@ -158,6 +161,7 @@ type
     procedure ApplyEditorFont;
     procedure ApplyViewerZoom;
     procedure SetViewerMax(AValue: Boolean);
+    procedure ApplyEditMenuMode;
     procedure LoadPrefs;
     procedure SavePrefs;
     function ConfigFile: string;
@@ -303,6 +307,20 @@ begin
     Exit;
   if (ssAlt in Shift) or (ssMeta in Shift) then
     Exit;
+  // En visor maximizado solo: buscar, copiar, zoom y F11.
+  // El resto se traga sin efecto (el editor está oculto).
+  if FViewerMax then
+    case Key of
+      Ord('C'), Ord('F'),
+      Ord('0'), VK_NUMPAD0,
+      VK_ADD, VK_OEM_PLUS, Ord('='), Ord('+'),
+      VK_SUBTRACT, VK_OEM_MINUS, Ord('-'), Ord('_'): ;
+    else
+      begin
+        Key := 0;
+        Exit;
+      end;
+    end;
   case Key of
     Ord('E'):
       begin
@@ -547,7 +565,10 @@ end;
 
 procedure TFrmMain.mnuCopiarClick(Sender: TObject);
 begin
-  SynEditor.CopyToClipboard;
+  if FViewerMax then
+    HtmlPreview.CopyToClipboard
+  else
+    SynEditor.CopyToClipboard;
 end;
 
 procedure TFrmMain.mnuPegarClick(Sender: TObject);
@@ -921,6 +942,34 @@ begin
   pnlEditor.Visible := not FViewerMax;
   Splitter1.Visible := not FViewerMax;
   mnuMaxVisor.Checked := FViewerMax;
+  ApplyEditMenuMode;
+end;
+
+procedure TFrmMain.ApplyEditMenuMode;
+var
+  E: Boolean; // True = split, edición completa
+begin
+  E := not FViewerMax;
+  // Solo en maximizado: vuelta a edición
+  mnuVolverEdicion.Visible := FViewerMax;
+  mnuSepEdMax.Visible := FViewerMax;
+  // Solo en split: resto de edición
+  mnuDeshacer.Visible := E;
+  mnuRehacer.Visible := E;
+  mnuSepEd1.Visible := E;
+  mnuCortar.Visible := E;
+  mnuPegar.Visible := E;
+  mnuSelTodo.Visible := E;
+  mnuSepEdFind.Visible := E;
+  mnuReemplazar.Visible := E;
+  mnuSepEd2.Visible := E;
+  mnuFormato.Visible := E;
+  // Siempre visibles: mnuBuscar, mnuBuscarSig, mnuBuscarAnt, mnuCopiar
+end;
+
+procedure TFrmMain.mnuVolverEdicionClick(Sender: TObject);
+begin
+  SetViewerMax(False);
 end;
 
 procedure TFrmMain.mnuAcercaDeClick(Sender: TObject);

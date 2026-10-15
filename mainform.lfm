@@ -172,6 +172,15 @@ object FrmMain: TFrmMain
     end
     object mnuEditar: TMenuItem
       Caption = '&Editar'
+      object mnuVolverEdicion: TMenuItem
+        Caption = '&Volver a edición (split)'
+        Visible = False
+        OnClick = mnuVolverEdicionClick
+      end
+      object mnuSepEdMax: TMenuItem
+        Caption = '-'
+        Visible = False
+      end
       object mnuDeshacer: TMenuItem
         Caption = '&Deshacer'#9'Ctrl+Z'
         OnClick = mnuDeshacerClick

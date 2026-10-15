@@ -14,7 +14,8 @@ derecha en `THtmlViewer`, con actualización automática.
 - Menú **Editar**: Deshacer / Rehacer, Cortar / Copiar / Pegar /
   Seleccionar todo, y submenú **Formato** (Títulos 1–3, Negrita, Cursiva,
   Tachado, Código, Enlace, Cita, Lista). Negrita/cursiva/tachado/código
-  conmutan si el texto ya está marcado
+  conmutan si el texto ya está marcado. En visor maximizado el menú se
+  reduce a Buscar, Copiar y Volver a edición (el Copiar copia del visor)
 - Menú contextual con botón derecho en el editor
 - Buscar (`Ctrl+F` / `F3` / `Mayús+F3`) y reemplazar (`Ctrl+H`) no-modal,
   con mayúsculas, palabras completas y regex
