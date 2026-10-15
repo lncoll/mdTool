@@ -665,6 +665,9 @@ begin
   end;
   SetDocFileName(Result, AFileName);
   PageControl1.ActivePage := Sheet;
+  // Refresco explícito: el OnChange no siempre salta al activar
+  // programáticamente (según widgetset llega diferido o nunca).
+  RefreshForActiveDoc;
   // Solo si es enfocable (ni en FormCreate ni en visor maximizado)
   if Ed.CanSetFocus then
     Ed.SetFocus;
