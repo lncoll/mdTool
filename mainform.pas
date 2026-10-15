@@ -538,6 +538,7 @@ end;
 procedure TFrmMain.OpenFile(const AFile: string);
 var
   SL: TStringList;
+  Doc: TDocInfo;
 begin
   SL := TStringList.Create;
   try
@@ -547,6 +548,25 @@ begin
       on E: Exception do
       begin
         ShowStatus('No se pudo abrir: ' + AFile);
+        Exit;
+      end;
+    end;
+    // Si solo hay una pestaña y es un archivo nuevo sin cambios,
+    // se reutiliza en lugar de acumular pestañas
+    if PageControl1.PageCount = 1 then
+    begin
+      Doc := ActiveDoc;
+      if (Doc <> nil) and (Doc.FileName = '') and not Doc.Modified then
+      begin
+        FLoading := True;
+        try
+          Doc.Editor.Lines.Text := SL.Text;
+        finally
+          FLoading := False;
+        end;
+        SetDocFileName(Doc, AFile);
+        SetDocModified(Doc, False);
+        RefreshForActiveDoc;
         Exit;
       end;
     end;
