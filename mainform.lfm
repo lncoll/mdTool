@@ -1,0 +1,405 @@
+object FrmMain: TFrmMain
+  Left = 2557
+  Height = 700
+  Top = -30
+  Width = 1100
+  Caption = 'mdTool'
+  ClientHeight = 700
+  ClientWidth = 1100
+  Menu = MainMenu1
+  Position = poScreenCenter
+  LCLVersion = '4.4.0.0'
+  KeyPreview = True
+  OnCloseQuery = FormCloseQuery
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  OnKeyDown = FormKeyDown
+  object pnlEditor: TPanel
+    Left = 0
+    Height = 678
+    Top = 0
+    Width = 545
+    Align = alLeft
+    BevelOuter = bvNone
+    Caption = 'pnlEditor'
+    ClientHeight = 678
+    ClientWidth = 545
+    TabOrder = 1
+    object SynEditor: TSynEdit
+      Left = 0
+      Height = 678
+      Top = 0
+      Width = 545
+      Align = alClient
+      Font.Height = -13
+      Font.Name = 'Monospace'
+      Font.Pitch = fpFixed
+      Font.Quality = fqNonAntialiased
+      ParentColor = False
+      ParentFont = False
+      PopupMenu = EditPopup
+      TabOrder = 0
+      Gutter.Width = 57
+      RightGutter.Width = 0
+      VisibleSpecialChars = [vscSpace, vscTabAtLast]
+      SelectedColor.BackPriority = 50
+      SelectedColor.ForePriority = 50
+      SelectedColor.FramePriority = 50
+      SelectedColor.BoldPriority = 50
+      SelectedColor.ItalicPriority = 50
+      SelectedColor.UnderlinePriority = 50
+      SelectedColor.StrikeOutPriority = 50
+      BracketHighlightStyle = sbhsBoth
+      BracketMatchColor.Background = clNone
+      BracketMatchColor.Foreground = clNone
+      BracketMatchColor.Style = [fsBold]
+      FoldedCodeColor.Background = clNone
+      FoldedCodeColor.Foreground = clGray
+      FoldedCodeColor.FrameColor = clGray
+      MouseLinkColor.Background = clNone
+      MouseLinkColor.Foreground = clBlue
+      LineHighlightColor.Background = clNone
+      LineHighlightColor.Foreground = clNone
+      OnChange = SynEditorChange
+      OnStatusChange = SynEditorStatusChange
+      object SynLeftGutterPartList1: TSynGutterPartList
+        object SynGutterMarks1: TSynGutterMarks
+          Width = 24
+          MaxExtraMarksColums = 0
+          Options = [sgmoDeDuplicateMarksOnOverflow]
+          MarkupInfo.Background = clBtnFace
+          MarkupInfo.Foreground = clNone
+        end
+        object SynGutterLineNumber1: TSynGutterLineNumber
+          Width = 17
+          MarkupInfo.Background = clBtnFace
+          MarkupInfo.Foreground = clNone
+          DigitCount = 2
+          ShowOnlyLineNumbersMultiplesOf = 1
+          ZeroStart = False
+          LeadingZeros = False
+        end
+        object SynGutterChanges1: TSynGutterChanges
+          Width = 4
+          ModifiedColor = 59900
+          SavedColor = clGreen
+          MarkupInfo.Background = clNone
+          MarkupInfo.Foreground = clGreen
+          MarkupInfo.FrameColor = 59900
+        end
+        object SynGutterSeparator1: TSynGutterSeparator
+          Width = 2
+          MarkupInfo.Background = clWhite
+          MarkupInfo.Foreground = clGray
+        end
+        object SynGutterCodeFolding1: TSynGutterCodeFolding
+          MarkupInfo.Background = clNone
+          MarkupInfo.Foreground = clGray
+        end
+      end
+    end
+  end
+  object Splitter1: TSplitter
+    Left = 545
+    Height = 678
+    Top = 0
+    Width = 6
+  end
+  object pnlPreview: TPanel
+    Left = 551
+    Height = 678
+    Top = 0
+    Width = 549
+    Align = alClient
+    BevelOuter = bvNone
+    Caption = 'pnlPreview'
+    ClientHeight = 678
+    ClientWidth = 549
+    TabOrder = 2
+    object HtmlPreview: THtmlViewer
+      Left = 0
+      Height = 678
+      Top = 0
+      Width = 549
+      Align = alClient
+      TabOrder = 0
+    end
+  end
+  object StatusBar1: TStatusBar
+    Left = 0
+    Height = 22
+    Top = 678
+    Width = 1100
+    Panels = <>
+    SimplePanel = False
+  end
+  object MainMenu1: TMainMenu
+    Left = 24
+    Top = 8
+    object mnuArchivo: TMenuItem
+      Caption = '&Archivo'
+      object mnuNuevo: TMenuItem
+        Caption = '&Nuevo'
+        ShortCut = 16462
+        OnClick = mnuNuevoClick
+      end
+      object mnuAbrir: TMenuItem
+        Caption = '&Abrir...'
+        ShortCut = 16463
+        OnClick = mnuAbrirClick
+      end
+      object mnuGuardar: TMenuItem
+        Caption = '&Guardar'
+        ShortCut = 16467
+        OnClick = mnuGuardarClick
+      end
+      object mnuGuardarComo: TMenuItem
+        Caption = 'Guardar &como...'
+        OnClick = mnuGuardarComoClick
+      end
+      object mnuExportarHtml: TMenuItem
+        Caption = '&Exportar a HTML...'
+        OnClick = mnuExportarHtmlClick
+      end
+      object mnuSep1: TMenuItem
+        Caption = '-'
+      end
+      object mnuSalir: TMenuItem
+        Caption = '&Salir'
+        OnClick = mnuSalirClick
+      end
+    end
+    object mnuEditar: TMenuItem
+      Caption = '&Editar'
+      object mnuDeshacer: TMenuItem
+        Caption = '&Deshacer'#9'Ctrl+Z'
+        OnClick = mnuDeshacerClick
+      end
+      object mnuRehacer: TMenuItem
+        Caption = '&Rehacer'#9'Ctrl+Y'
+        OnClick = mnuRehacerClick
+      end
+      object mnuSepEd1: TMenuItem
+        Caption = '-'
+      end
+      object mnuCortar: TMenuItem
+        Caption = 'Cor&tar'#9'Ctrl+X'
+        OnClick = mnuCortarClick
+      end
+      object mnuCopiar: TMenuItem
+        Caption = '&Copiar'#9'Ctrl+C'
+        OnClick = mnuCopiarClick
+      end
+      object mnuPegar: TMenuItem
+        Caption = '&Pegar'#9'Ctrl+V'
+        OnClick = mnuPegarClick
+      end
+      object mnuSelTodo: TMenuItem
+        Caption = 'Seleccionar &todo'#9'Ctrl+A'
+        OnClick = mnuSelTodoClick
+      end
+      object mnuSepEd2: TMenuItem
+        Caption = '-'
+      end
+      object mnuFormato: TMenuItem
+        Caption = 'For&mato'
+      object mnuTitulo1: TMenuItem
+        Tag = 1
+        Caption = 'Título &1'#9'Ctrl+1'
+        OnClick = mnuTituloClick
+      end
+      object mnuTitulo2: TMenuItem
+        Tag = 2
+        Caption = 'Título &2'#9'Ctrl+2'
+        OnClick = mnuTituloClick
+      end
+      object mnuTitulo3: TMenuItem
+        Tag = 3
+        Caption = 'Título &3'#9'Ctrl+3'
+        OnClick = mnuTituloClick
+      end
+      object mnuSepEd3: TMenuItem
+        Caption = '-'
+      end
+      object mnuNegrita: TMenuItem
+        Caption = '&Negrita'#9'Ctrl+B'
+        OnClick = mnuNegritaClick
+      end
+      object mnuCursiva: TMenuItem
+        Caption = 'Curs&iva'#9'Ctrl+I'
+        OnClick = mnuCursivaClick
+      end
+      object mnuTachado: TMenuItem
+        Caption = '&Tachado'#9'Ctrl+D'
+        OnClick = mnuTachadoClick
+      end
+      object mnuCodigo: TMenuItem
+        Caption = 'Có&digo'#9'Ctrl+`'
+        OnClick = mnuCodigoClick
+      end
+      object mnuEnlace: TMenuItem
+        Caption = '&Enlace...'#9'Ctrl+K'
+        OnClick = mnuEnlaceClick
+      end
+      object mnuSepEd4: TMenuItem
+        Caption = '-'
+      end
+      object mnuCita: TMenuItem
+        Caption = 'Ci&ta'#9'Ctrl+Q'
+        OnClick = mnuCitaClick
+      end
+      object mnuLista: TMenuItem
+        Caption = '&Lista'#9'Ctrl+L'
+        OnClick = mnuListaClick
+      end
+      end
+    end
+    object mnuVer: TMenuItem
+      Caption = '&Ver'
+      object mnuActualizar: TMenuItem
+        Caption = '&Actualizar vista previa'
+        ShortCut = 116
+        OnClick = mnuActualizarClick
+      end
+      object mnuAutoActualizar: TMenuItem
+        Caption = 'Auto-&actualizar'
+        Checked = True
+        OnClick = mnuAutoActualizarClick
+      end
+      object mnuSepVer1: TMenuItem
+        Caption = '-'
+      end
+      object mnuFuenteEditor: TMenuItem
+        Caption = '&Fuente del editor...'
+        OnClick = mnuFuenteEditorClick
+      end
+      object mnuSepVer2: TMenuItem
+        Caption = '-'
+      end
+      object mnuZoomMas: TMenuItem
+        Caption = 'A&grandar visor'#9'Ctrl++'
+        OnClick = mnuZoomMasClick
+      end
+      object mnuZoomMenos: TMenuItem
+        Caption = 'A&chicar visor'#9'Ctrl+-'
+        OnClick = mnuZoomMenosClick
+      end
+      object mnuZoomReset: TMenuItem
+        Caption = '&Restablecer zoom visor'
+        OnClick = mnuZoomResetClick
+      end
+    end
+    object mnuAyuda: TMenuItem
+      Caption = 'A&yuda'
+      object mnuAcercaDe: TMenuItem
+        Caption = '&Acerca de...'
+        OnClick = mnuAcercaDeClick
+      end
+    end
+  end
+  object OpenDialog1: TOpenDialog
+    Left = 120
+    Top = 8
+  end
+  object SaveDialog1: TSaveDialog
+    Left = 200
+    Top = 8
+  end
+  object SaveHtmlDialog: TSaveDialog
+    Left = 280
+    Top = 8
+  end
+  object FontDialog1: TFontDialog
+    Left = 440
+    Top = 8
+  end
+  object PreviewTimer: TTimer
+    Enabled = False
+    Interval = 400
+    OnTimer = PreviewTimerTimer
+    Left = 360
+    Top = 8
+  end
+  object EditPopup: TPopupMenu
+    Left = 520
+    Top = 8
+    object popDeshacer: TMenuItem
+      Caption = '&Deshacer'
+      OnClick = mnuDeshacerClick
+    end
+    object popRehacer: TMenuItem
+      Caption = '&Rehacer'
+      OnClick = mnuRehacerClick
+    end
+    object popSepP1: TMenuItem
+      Caption = '-'
+    end
+    object popCortar: TMenuItem
+      Caption = 'Cor&tar'
+      OnClick = mnuCortarClick
+    end
+    object popCopiar: TMenuItem
+      Caption = '&Copiar'
+      OnClick = mnuCopiarClick
+    end
+    object popPegar: TMenuItem
+      Caption = '&Pegar'
+      OnClick = mnuPegarClick
+    end
+    object popSepP2: TMenuItem
+      Caption = '-'
+    end
+    object popFormato: TMenuItem
+      Caption = 'For&mato'
+      object popTitulo1: TMenuItem
+        Tag = 1
+        Caption = 'Título &1'
+        OnClick = mnuTituloClick
+      end
+      object popTitulo2: TMenuItem
+        Tag = 2
+        Caption = 'Título &2'
+        OnClick = mnuTituloClick
+      end
+      object popTitulo3: TMenuItem
+        Tag = 3
+        Caption = 'Título &3'
+        OnClick = mnuTituloClick
+      end
+      object popSepP3: TMenuItem
+        Caption = '-'
+      end
+      object popNegrita: TMenuItem
+        Caption = '&Negrita'
+        OnClick = mnuNegritaClick
+      end
+      object popCursiva: TMenuItem
+        Caption = 'Curs&iva'
+        OnClick = mnuCursivaClick
+      end
+      object popTachado: TMenuItem
+        Caption = '&Tachado'
+        OnClick = mnuTachadoClick
+      end
+      object popCodigo: TMenuItem
+        Caption = 'Có&digo'
+        OnClick = mnuCodigoClick
+      end
+      object popEnlace: TMenuItem
+        Caption = '&Enlace...'
+        OnClick = mnuEnlaceClick
+      end
+      object popSepP4: TMenuItem
+        Caption = '-'
+      end
+      object popCita: TMenuItem
+        Caption = 'Ci&ta'
+        OnClick = mnuCitaClick
+      end
+      object popLista: TMenuItem
+        Caption = '&Lista'
+        OnClick = mnuListaClick
+      end
+    end
+  end
+end

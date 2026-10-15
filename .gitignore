@@ -1,0 +1,11 @@
+/lib/
+/backup/
+/mdtool
+link*.res
+*.o
+*.ppu
+*.res
+*.compiled
+*.dbg
+*.or
+*.lps
