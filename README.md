@@ -71,6 +71,13 @@ lazbuild mdtool.lpi
 > (`cannot find -lgdk-x11-2.0`), instálalo con
 > `sudo apt install libgtk2.0-dev`.
 
+## Problemas conocidos
+
+- `Gtk-Message: Failed to load module "canberra-gtk-module"`: aviso
+  inofensivo de GTK2 (módulo de sonidos de eventos, ausente en Ubuntu
+  24.04+ que solo trae el de GTK3). La app funciona igual. Para
+  silenciarlo: `sudo apt install libcanberra-gtk-module`.
+
 ## Estructura
 
 ```
