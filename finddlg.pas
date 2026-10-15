@@ -83,20 +83,19 @@ begin
   if Sel <> '' then
     edtFind.Text := Sel;
   if AReplace then
-  begin
-    Caption := 'Reemplazar';
-    edtReplace.SetFocus;
-  end
+    Caption := 'Reemplazar'
   else
-  begin
     Caption := 'Buscar';
-    edtFind.SetFocus;
-  end;
-  edtFind.SelectAll;
+  // Primero visible (o SetFocus revienta con "Can not focus")
   if not Visible then
     Show
   else
     BringToFront;
+  if AReplace then
+    edtReplace.SetFocus
+  else
+    edtFind.SetFocus;
+  edtFind.SelectAll;
 end;
 
 procedure TFrmFind.FormShow(Sender: TObject);
