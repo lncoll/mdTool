@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, Menus, ComCtrls,
-  ExtCtrls, StdCtrls, IniFiles, LCLType, htmlview, SynEdit;
+  ExtCtrls, StdCtrls, IniFiles, LCLType, htmlview, SynEdit, SynMarkdown;
 
 type
 
@@ -127,6 +127,7 @@ type
     FModified: Boolean;
     FLoading: Boolean;
     FViewerFontSize: Integer;
+    FMdHighlighter: TSynMarkdownSyn;
     procedure SetFileName(const AValue: string);
     procedure SetModified(AValue: Boolean);
     function CheckSaveChanges: Boolean;
@@ -163,15 +164,8 @@ begin
   FModified := False;
   FLoading := False;
   FViewerFontSize := 12;
-  // El constructor de TSynEdit omite los bindings de teclado cuando el
-  // componente se crea por streaming (csLoading); hay que restaurarlos.
-  SynEditor.SetDefaultKeystrokes;
-  OpenDialog1.Filter := 'Markdown (*.md;*.markdown)|*.md;*.markdown|Todos (*.*)|*.*';
-  SaveDialog1.Filter := OpenDialog1.Filter;
-  SaveDialog1.DefaultExt := 'md';
-  SaveHtmlDialog.Filter := 'HTML (*.html)|*.html|Todos (*.*)|*.*';
-  SaveHtmlDialog.DefaultExt := 'html';
-  // StatusBar con 4 paneles (fichero / estado / cursor / zoom visor)
+  // StatusBar con 4 paneles (fichero / estado / cursor / zoom visor).
+  // Va primero: cualquier cambio en el editor dispara UpdateStatus.
   StatusBar1.Panels.Clear;
   with StatusBar1.Panels.Add do
   begin
@@ -189,6 +183,16 @@ begin
   begin
     Width := 110;
   end;
+  // El constructor de TSynEdit omite los bindings de teclado cuando el
+  // componente se crea por streaming (csLoading); hay que restaurarlos.
+  SynEditor.SetDefaultKeystrokes;
+  FMdHighlighter := TSynMarkdownSyn.Create(Self);
+  SynEditor.Highlighter := FMdHighlighter;
+  OpenDialog1.Filter := 'Markdown (*.md;*.markdown)|*.md;*.markdown|Todos (*.*)|*.*';
+  SaveDialog1.Filter := OpenDialog1.Filter;
+  SaveDialog1.DefaultExt := 'md';
+  SaveHtmlDialog.Filter := 'HTML (*.html)|*.html|Todos (*.*)|*.*';
+  SaveHtmlDialog.DefaultExt := 'html';
   LoadPrefs;
   ApplyEditorFont;
   ApplyViewerZoom;
@@ -749,6 +753,8 @@ procedure TFrmMain.UpdateStatus;
 var
   Pos: TPoint;
 begin
+  if StatusBar1.Panels.Count < 4 then
+    Exit; // FormCreate aún no ha creado los paneles
   if FFileName = '' then
     StatusBar1.Panels[0].Text := 'sin título'
   else

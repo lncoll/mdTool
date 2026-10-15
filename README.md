@@ -78,6 +78,7 @@ mdtool.lpi    proyecto Lazarus
 mainform.pas  formulario principal (editor + preview + menús)
 mainform.lfm  diseño del formulario
 markdown.pas  parser Markdown → HTML + hoja de estilos
+synmarkdown.pas highlighter Markdown para SynEdit
 ```
 
 ## Notas técnicas
@@ -95,7 +96,7 @@ markdown.pas  parser Markdown → HTML + hoja de estilos
 
 ## Roadmap
 
-- [ ] Resaltado Markdown en SynEdit
+- [x] Resaltado Markdown en SynEdit (`TSynMarkdownSyn`)
 - [ ] Task-lists y footnotes GFM
 - [ ] Buscar / reemplazar
 - [ ] Pestañas multi-documento
