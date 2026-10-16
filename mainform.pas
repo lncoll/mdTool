@@ -1558,7 +1558,7 @@ procedure TFrmMain.mnuAcercaDeClick(Sender: TObject);
 begin
   ShowMessage('mdTool 0.1.2' + LineEnding +
     'Visor/editor de Markdown en Lazarus/Free Pascal.' + LineEnding +
-    'Autor: lnca.');
+    'Autor: lncoll.');
 end;
 
 procedure TFrmMain.UpdatePreview;

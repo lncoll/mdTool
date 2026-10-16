@@ -1,6 +1,6 @@
 # mdTool
 
-**Versión 0.1.2** — Autor: lnca
+**Versión 0.1.2** — Autor: lncoll
 
 Visor y editor de ficheros Markdown (`.md`) con entorno gráfico, hecho en Lazarus / Free Pascal.
 
@@ -9,9 +9,7 @@ Vista dividida: editas a la izquierda en `TSynEdit` y ves el resultado a la dere
 ## Características
 
 - Nuevo / Abrir (multi-selección) / Guardar / Guardar como / Exportar a HTML
-- Pestañas multi-documento: cada una con su fichero y estado; la vista
-  previa sigue a la pestaña activa; cerrar con `Ctrl+W`, cambiar con
-  `Ctrl+Tab`
+- Pestañas multi-documento: cada una con su fichero y estado; la vista previa sigue a la pestaña activa; cerrar con `Ctrl+W`, cambiar con  `Ctrl+Tab`.
 - Vista previa con retardo anti-rebote (400 ms), botón y tecla `F5`, con auto-actualización conmutable y scroll vertical sincronizado con el caret
 - Menú **Editar**: Deshacer / Rehacer, Cortar / Copiar / Pegar / Seleccionar todo, y submenú **Formato** (Títulos 1–3, Negrita, Cursiva, Tachado, Código, Enlace, Cita, Lista). Negrita/cursiva/tachado/código conmutan si el texto ya está marcado. En visor maximizado el menú se reduce a Buscar, Copiar y Volver a edición (el Copiar copia del visor)
 - Menú contextual con botón derecho en el editor

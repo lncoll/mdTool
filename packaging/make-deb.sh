@@ -26,7 +26,7 @@ Section: editors
 Priority: optional
 Architecture: amd64
 Depends: libgtk2.0-0t64 | libgtk2.0-0
-Maintainer: lnca
+Maintainer: lncoll
 Description: Editor y visor de Markdown
  Visor y editor de ficheros Markdown con vista dividida,
  resaltado, pestañas y exportación a HTML.
