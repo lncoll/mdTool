@@ -6,8 +6,10 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, Menus, ComCtrls,
-  ExtCtrls, StdCtrls, IniFiles, LCLType, htmlview, SynEdit, SynEditTypes,
-  SynMarkdown;
+  ExtCtrls, IniFiles, LCLType, htmlview, HTMLSubs, SynEdit, SynEditTypes,
+  SynMarkdown, Markdown
+  {$ifdef LCLGTK2}, gtk2, gdk2pixbuf, glib2{$endif}
+  ;
 
 type
 
@@ -109,6 +111,7 @@ type
     FontDialog1: TFontDialog;
     PreviewTimer: TTimer;
     procedure FormCreate(Sender: TObject);
+    procedure FormShow(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -119,6 +122,8 @@ type
     procedure popCopiarVerClick(Sender: TObject);
     procedure HtmlPreviewRightClick(Sender: TObject;
       Parameters: TRightClickParameters);
+    procedure HtmlPreviewSectionClick(Sender: TObject; Obj: TSectionBase;
+      Button: TMouseButton; Shift: TShiftState; X, Y, IX, IY: Integer);
     procedure SynEditorChange(Sender: TObject);
     procedure SynEditorStatusChange(Sender: TObject;
       Changes: TSynStatusChanges);
@@ -167,6 +172,9 @@ type
     FFindText: string;
     FFindOpts: TSynSearchOptions;
     FReplaceText: string;
+    FPreviewMap: TMarkdownLineMap;
+    FPreviewHeadLen: Integer;
+    FPreviewFragLen: Integer;
     procedure SetDocFileName(Doc: TDocInfo; const AValue: string);
     procedure SetDocModified(Doc: TDocInfo; AValue: Boolean);
     procedure RefreshDocTitle(Doc: TDocInfo);
@@ -185,6 +193,9 @@ type
     procedure ApplyViewerZoom;
     procedure SetViewerMax(AValue: Boolean);
     procedure ApplyEditMenuMode;
+    {$ifdef LCLGTK2}
+    procedure RestyleTabCloseButtons;
+    {$endif}
     procedure LoadPrefs;
     procedure SavePrefs;
     function ConfigFile: string;
@@ -212,7 +223,7 @@ var
 implementation
 
 uses
-  Markdown, FindDlg;
+  FindDlg;
 
 {$R *.lfm}
 
@@ -222,6 +233,29 @@ const
     '- Edita a la izquierda' + LineEnding +
     '- Vista previa a la derecha' + LineEnding + LineEnding +
     '**Abrir**, **Guardar** y **Exportar a HTML** desde el menú Archivo.';
+
+{$ifdef LCLGTK2}
+// X de cierre discreta (gris, 12x12) para sustituir el icono stock rojo
+// del tema GTK en las solapas (nboShowCloseButtons).
+const
+  CloseXpm: array[0..14] of PChar = (
+    '12 12 2 1',
+    ' 	c None',
+    '.	c #8A8A8A',
+    '            ',
+    '            ',
+    ' .        . ',
+    '  .      .  ',
+    '   .    .   ',
+    '    .  .    ',
+    '     ..     ',
+    '     ..     ',
+    '    .  .    ',
+    '   .    .   ',
+    '  .      .  ',
+    ' .        . '
+  );
+{$endif}
 
 procedure TFrmMain.FormCreate(Sender: TObject);
 begin
@@ -291,6 +325,15 @@ begin
     SetViewerMax(False);
   end;
   RefreshForActiveDoc;
+end;
+
+procedure TFrmMain.FormShow(Sender: TObject);
+begin
+  // Los botones de cierre se crean al materializarse el handle (al mostrar):
+  // aquí ya existen y se pueden reestilizar.
+  {$ifdef LCLGTK2}
+  RestyleTabCloseButtons;
+  {$endif}
 end;
 
 procedure TFrmMain.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
@@ -475,7 +518,7 @@ begin
         ApplyHeading(Key - Ord('0'));
         Key := 0;
       end;
-    VK_OEM_3:
+    VK_OEM_3, Ord('J'):
       begin
         mnuCodigoClick(Self);
         Key := 0;
@@ -769,6 +812,39 @@ begin
   ViewPopup.PopUp(P.X, P.Y);
 end;
 
+procedure TFrmMain.HtmlPreviewSectionClick(Sender: TObject;
+  Obj: TSectionBase; Button: TMouseButton; Shift: TShiftState;
+  X, Y, IX, IY: Integer);
+var
+  Ed: TSynEdit;
+  SrcPos, FragPos, MdLine: Integer;
+begin
+  if Button <> mbLeft then
+    Exit; // el derecho lo gestiona el popup; el central hace scroll
+  Ed := ActiveEditor;
+  if Ed = nil then
+    Exit;
+  if HtmlPreview.SelLength <> 0 then
+    Exit; // fue un arrastre para seleccionar, no un click simple
+  // CaretPos lo fijó el visor en el MouseDown (punto del click).
+  // FindSourcePos devuelve el offset en BYTES dentro del buffer UTF-16
+  // (2 bytes/unidad; incluye el BOM, que aquí es 0: la página siempre
+  // empieza por '<').
+  SrcPos := HtmlPreview.FindSourcePos(HtmlPreview.CaretPos);
+  if SrcPos < 0 then
+    Exit;
+  FragPos := SrcPos div 2 - FPreviewHeadLen;
+  if (FragPos < 0) or (FragPos >= FPreviewFragLen) then
+    Exit; // fuera del fragmento (p. ej. el visor navegó a un enlace)
+  MdLine := MarkdownLineAt(FPreviewMap, FragPos);
+  if (MdLine < 1) or (MdLine > Ed.Lines.Count) then
+    Exit;
+  Ed.CaretXY := Point(1, MdLine);
+  Ed.EnsureCursorPosVisible;
+  if Ed.CanSetFocus then
+    Ed.SetFocus;
+end;
+
 procedure TFrmMain.PageControl1CloseTabClicked(Sender: TObject);
 begin
   // Sender es la pestaña cuya X se pulsó
@@ -776,11 +852,55 @@ begin
     CloseDocTab(Sender as TTabSheet);
 end;
 
+{$ifdef LCLGTK2}
+procedure TFrmMain.RestyleTabCloseButtons;
+var
+  i: Integer;
+  NB: PGtkNotebook;
+  TabWidget, BtnWidget, ImgWidget: PGtkWidget;
+  Pix: PGdkPixbuf;
+begin
+  // El widgetset crea los botones con el icono stock GTK_STOCK_CLOSE
+  // (rojo según el tema). Se sustituye por una X gris discreta propia.
+  if not PageControl1.HandleAllocated then
+    Exit;
+  NB := PGtkNotebook(PageControl1.Handle);
+  Pix := gdk_pixbuf_new_from_xpm_data(PPChar(@CloseXpm[0]));
+  if Pix = nil then
+    Exit;
+  try
+    for i := 0 to PageControl1.PageCount - 1 do
+    begin
+      if not PageControl1.Pages[i].HandleAllocated then
+        Continue;
+      TabWidget := gtk_notebook_get_tab_label(NB,
+        PGtkWidget(PageControl1.Pages[i].Handle));
+      if TabWidget = nil then
+        Continue;
+      BtnWidget := PGtkWidget(g_object_get_data(PGObject(TabWidget),
+        'TabCloseBtn'));
+      if BtnWidget = nil then
+        Continue;
+      ImgWidget := PGtkWidget(g_object_get_data(PGObject(BtnWidget),
+        'TabCloseBtnImage'));
+      if ImgWidget = nil then
+        Continue;
+      gtk_image_set_from_pixbuf(PGtkImage(ImgWidget), Pix);
+    end;
+  finally
+    g_object_unref(Pix);
+  end;
+end;
+{$endif}
+
 procedure TFrmMain.RefreshForActiveDoc;
 begin
   UpdateCaption;
   UpdateStatus;
   UpdatePreview;
+  {$ifdef LCLGTK2}
+  RestyleTabCloseButtons;
+  {$endif}
 end;
 
 procedure TFrmMain.SetDocFileName(Doc: TDocInfo; const AValue: string);
@@ -1355,19 +1475,24 @@ end;
 
 procedure TFrmMain.UpdatePreview;
 var
+  Head, Frag: string;
   Html: string;
   Ed: TSynEdit;
 begin
   Ed := ActiveEditor;
   if Ed = nil then
     Exit;
-  Html := '<!DOCTYPE html>' + LineEnding +
+  Head := '<!DOCTYPE html>' + LineEnding +
     '<html><head><meta charset="utf-8"><style>' + MarkdownCss +
-    '</style></head><body>' + LineEnding +
-    MarkdownToHtml(Ed.Lines.Text) +
-    LineEnding + '</body></html>';
+    '</style></head><body>' + LineEnding;
+  Frag := MarkdownToHtmlWithMap(Ed.Lines.Text, FPreviewMap);
+  TranslateLineMapToUtf16(Frag, FPreviewMap);
+  // Head es ASCII puro: bytes = unidades del visor (UTF-16).
+  FPreviewHeadLen := Length(Head);
+  FPreviewFragLen := Length(UnicodeString(Frag));
+  Html := Head + Frag + LineEnding + '</body></html>';
   try
-    HtmlPreview.LoadFromString(Html);
+    HtmlPreview.LoadFromString(UnicodeString(Html));
     // Mantiene la posición tras recargar el documento
     SyncPreviewScroll;
   except

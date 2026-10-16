@@ -7,8 +7,30 @@ interface
 uses
   Classes, SysUtils, StrUtils;
 
+type
+  TMarkdownLineInfo = record
+    HtmlPos: Integer; { offset 0-based en el fragmento HTML }
+    MdLine: Integer;  { línea 1-based en el Markdown origen }
+  end;
+  TMarkdownLineMap = array of TMarkdownLineInfo;
+
 { Convierte Markdown a fragmento HTML (para THtmlViewer). }
 function MarkdownToHtml(const Md: string): string;
+
+{ Como MarkdownToHtml, pero además devuelve el mapa
+  (offset HTML -> línea Markdown) para sincronizar el cursor. }
+function MarkdownToHtmlWithMap(const Md: string;
+  out LineMap: TMarkdownLineMap): string;
+
+{ Traduce LineMap de bytes UTF-8 a unidades UTF-16 (las que usa el visor).
+  Un solo pase lineal; las entradas deben estar en orden ascendente. }
+procedure TranslateLineMapToUtf16(const FragUtf8: string;
+  var LineMap: TMarkdownLineMap);
+
+{ Línea Markdown (1-based) del bloque que contiene el offset FragPos
+  (unidades de visor). 0 si no hay correspondencia. }
+function MarkdownLineAt(const LineMap: TMarkdownLineMap;
+  FragPos: Integer): Integer;
 
 { Hoja de estilos compartida por el visor y la exportación. }
 function MarkdownCss: string;
@@ -396,7 +418,8 @@ begin
     'a{color:#0B5CAD}';
 end;
 
-function MarkdownToHtml(const Md: string): string;
+function MarkdownToHtmlWithMap(const Md: string;
+  out LineMap: TMarkdownLineMap): string;
 var
   Lines: TStringList;
   i: Integer;
@@ -404,10 +427,18 @@ var
   InCode, InPara, InQuote: Boolean;
   InList: Boolean;
   ListOrdered: Boolean;
-  CodeLang: string;
   HLevel: Integer;
   IsOrd: Boolean;
   ItemContent: string;
+
+  { Registra el bloque que empieza en la línea i (0-based):
+    offset actual del HTML (0-based) -> línea Markdown (1-based). }
+  procedure MarkMap;
+  begin
+    SetLength(LineMap, Length(LineMap) + 1);
+    LineMap[High(LineMap)].HtmlPos := Length(Result);
+    LineMap[High(LineMap)].MdLine := i + 1;
+  end;
 
   procedure ClosePara;
   begin
@@ -443,24 +474,24 @@ var
 
   procedure EmitTable;
   var
-    HC, DC, RC: TStringList;
-    Aligns: array of string;
+    HC, DC, RC, Aligns: TStringList;
     c, N, RowIdx: Integer;
     RLine: string;
   begin
+    MarkMap; // la tabla empieza en Lines[i]
     HC := TStringList.Create;
     DC := TStringList.Create;
     RC := TStringList.Create;
+    Aligns := TStringList.Create;
     try
       SplitTableRow(Trim(Lines[i]), HC);
       SplitTableRow(Trim(Lines[i + 1]), DC);
       N := HC.Count;
-      SetLength(Aligns, N);
       for c := 0 to N - 1 do
         if c < DC.Count then
-          Aligns[c] := ColAlign(DC[c])
+          Aligns.Add(ColAlign(DC[c]))
         else
-          Aligns[c] := '';
+          Aligns.Add('');
       Result += '<table>' + LineEnding +
         '<thead>' + LineEnding + '<tr>' + LineEnding;
       for c := 0 to N - 1 do
@@ -497,11 +528,13 @@ var
       HC.Free;
       DC.Free;
       RC.Free;
+      Aligns.Free;
     end;
   end;
 
 begin
   Result := '';
+  LineMap := nil;
   Lines := TStringList.Create;
   try
     Lines.Text := StringReplace(Md, #13#10, #10, [rfReplaceAll]);
@@ -510,7 +543,6 @@ begin
     InPara := False;
     InQuote := False;
     InList := False;
-    CodeLang := '';
     i := 0;
     while i < Lines.Count do
     begin
@@ -530,7 +562,7 @@ begin
           ClosePara;
           CloseQuote;
           CloseList;
-          CodeLang := Trim(Copy(Trimmed, 4, MaxInt));
+          MarkMap;
           Result += '<pre>' + LineEnding;
           InCode := True;
         end;
@@ -559,6 +591,7 @@ begin
         ClosePara;
         CloseQuote;
         CloseList;
+        MarkMap;
         Result += '<hr>' + LineEnding;
         Inc(i);
         Continue;
@@ -583,6 +616,7 @@ begin
         ClosePara;
         CloseQuote;
         CloseList;
+        MarkMap;
         // Quita cierre opcional ### al final
         while (Content <> '') and (Content[Length(Content)] = '#') do
           Content := TrimRight(Copy(Content, 1, Length(Content) - 1));
@@ -600,6 +634,7 @@ begin
         begin
           ClosePara;
           CloseList;
+          MarkMap;
           Result += '<blockquote>' + LineEnding;
           InQuote := True;
         end;
@@ -666,6 +701,7 @@ begin
             Result += '<ul>' + LineEnding;
           ListOrdered := IsOrd;
         end;
+        MarkMap; // cada ítem apunta a su línea
         Result += '<li>' + ProcessInline(ItemContent) + '</li>' + LineEnding;
         Inc(i);
         Continue;
@@ -680,6 +716,7 @@ begin
       if (Copy(Line, 1, 4) = '    ') and (Trimmed <> '') then
       begin
         ClosePara;
+        MarkMap;
         Result += '<pre>' + EscapeHtml(Copy(Line, 5, MaxInt)) + '</pre>' +
           LineEnding;
         Inc(i);
@@ -689,6 +726,7 @@ begin
       // Párrafo normal. "<br>" si termina en dos espacios
       if not InPara then
       begin
+        MarkMap;
         Result += '<p>' + ProcessInline(Line);
         InPara := True;
       end
@@ -710,6 +748,66 @@ begin
   finally
     Lines.Free;
   end;
+end;
+
+function MarkdownToHtml(const Md: string): string;
+var
+  Dummy: TMarkdownLineMap;
+begin
+  Result := MarkdownToHtmlWithMap(Md, Dummy);
+end;
+
+procedure TranslateLineMapToUtf16(const FragUtf8: string;
+  var LineMap: TMarkdownLineMap);
+var
+  i, u, k: Integer;
+  B: Byte;
+begin
+  // Las entradas se generan en orden ascendente: basta un pase lineal.
+  // Solo los bytes líderes UTF-8 suman unidades UTF-16 (los de
+  // continuación $80..$BF no; los de 4 bytes suman 2 por el subrogado).
+  u := 0;
+  k := 0;
+  i := 1;
+  while (k <= High(LineMap)) and (i <= Length(FragUtf8) + 1) do
+  begin
+    while (k <= High(LineMap)) and (LineMap[k].HtmlPos <= i - 1) do
+    begin
+      LineMap[k].HtmlPos := u;
+      Inc(k);
+    end;
+    if i > Length(FragUtf8) then
+      Break;
+    B := Byte(FragUtf8[i]);
+    if B < $80 then
+      Inc(u)
+    else if B >= $C0 then
+      if B >= $F0 then
+        Inc(u, 2)
+      else
+        Inc(u);
+    Inc(i);
+  end;
+  // Entradas residuales (más allá del final): al final del fragmento.
+  while k <= High(LineMap) do
+  begin
+    LineMap[k].HtmlPos := u;
+    Inc(k);
+  end;
+end;
+
+function MarkdownLineAt(const LineMap: TMarkdownLineMap;
+  FragPos: Integer): Integer;
+var
+  k: Integer;
+begin
+  // Entradas ascendentes: la última con HtmlPos <= FragPos manda.
+  Result := 0;
+  for k := 0 to High(LineMap) do
+    if LineMap[k].HtmlPos <= FragPos then
+      Result := LineMap[k].MdLine
+    else
+      Break;
 end;
 
 function MarkdownToHtmlPage(const Md, Title: string): string;

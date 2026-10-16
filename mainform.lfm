@@ -15,6 +15,7 @@ object FrmMain: TFrmMain
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnKeyDown = FormKeyDown
+  OnShow = FormShow
   object pnlEditor: TPanel
     Left = 0
     Height = 678
@@ -62,6 +63,7 @@ object FrmMain: TFrmMain
       Align = alClient
       TabOrder = 0
       OnRightClick = HtmlPreviewRightClick
+      OnSectionClick = HtmlPreviewSectionClick
     end
   end
   object StatusBar1: TStatusBar
@@ -205,7 +207,7 @@ object FrmMain: TFrmMain
         OnClick = mnuTachadoClick
       end
       object mnuCodigo: TMenuItem
-        Caption = 'Có&digo'#9'Ctrl+`'
+        Caption = 'Có&digo'#9'Ctrl+J'
         OnClick = mnuCodigoClick
       end
       object mnuEnlace: TMenuItem
