@@ -237,9 +237,41 @@ uses
 const
   SAMPLE_TEXT = '# mdTool' + LineEnding + LineEnding +
     'Editor / visor de Markdown.' + LineEnding + LineEnding +
-    '- Edita a la izquierda' + LineEnding +
-    '- Vista previa a la derecha' + LineEnding + LineEnding +
-    '**Abrir**, **Guardar** y **Exportar a HTML** desde el menú Archivo.';
+    '**Abrir**, **Guardar** y **Exportar a HTML** desde el menú Archivo.' +
+    LineEnding + LineEnding +
+    '## Atajos de teclado' + LineEnding + LineEnding +
+    '| Atajo | Acción |' + LineEnding +
+    '| --- | --- |' + LineEnding +
+    '| Ctrl+N | Nuevo documento |' + LineEnding +
+    '| Ctrl+O | Abrir |' + LineEnding +
+    '| Ctrl+S | Guardar |' + LineEnding +
+    '| Ctrl+W | Cerrar pestaña |' + LineEnding +
+    '| Ctrl+Tab | Pestaña siguiente |' + LineEnding +
+    '| Ctrl+Mayús+Tab | Pestaña anterior |' + LineEnding +
+    '| Ctrl+Z | Deshacer |' + LineEnding +
+    '| Ctrl+Y | Rehacer |' + LineEnding +
+    '| Ctrl+X | Cortar |' + LineEnding +
+    '| Ctrl+C | Copiar |' + LineEnding +
+    '| Ctrl+V | Pegar |' + LineEnding +
+    '| Ctrl+A | Seleccionar todo |' + LineEnding +
+    '| Ctrl+F | Buscar |' + LineEnding +
+    '| Ctrl+H | Reemplazar |' + LineEnding +
+    '| F3 | Buscar siguiente |' + LineEnding +
+    '| Mayús+F3 | Buscar anterior |' + LineEnding +
+    '| Ctrl+1, Ctrl+2, Ctrl+3 | Título 1, 2, 3 |' + LineEnding +
+    '| Ctrl+B | Negrita |' + LineEnding +
+    '| Ctrl+I | Cursiva |' + LineEnding +
+    '| Ctrl+D | Tachado |' + LineEnding +
+    '| Ctrl+J | Código |' + LineEnding +
+    '| Ctrl+K | Enlace |' + LineEnding +
+    '| Ctrl+Q | Cita |' + LineEnding +
+    '| Ctrl+L | Lista |' + LineEnding +
+    '| F5 | Actualizar vista previa |' + LineEnding +
+    '| Ctrl+0 | Restablecer zoom del visor |' + LineEnding +
+    '| Ctrl++ | Agrandar visor |' + LineEnding +
+    '| Ctrl+- | Achicar visor |' + LineEnding +
+    '| F11 | Maximizar visor |' + LineEnding +
+    '| Ctrl+E | Fuente del editor |' + LineEnding;
 
 {$ifdef LCLGTK2}
 // X de cierre discreta (gris, 12x12) para sustituir el icono stock rojo
@@ -1524,9 +1556,9 @@ end;
 
 procedure TFrmMain.mnuAcercaDeClick(Sender: TObject);
 begin
-  ShowMessage('mdTool 0.1' + LineEnding +
+  ShowMessage('mdTool 0.1.2' + LineEnding +
     'Visor/editor de Markdown en Lazarus/Free Pascal.' + LineEnding +
-    'Editor: SynEdit · Preview: TIpHtmlPanel.');
+    'Autor: lnca.');
 end;
 
 procedure TFrmMain.UpdatePreview;

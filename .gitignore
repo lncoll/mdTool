@@ -10,3 +10,5 @@ link*.res
 *.or
 *.lps
 *.log
+*.deb
+/dist/

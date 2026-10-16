@@ -1,5 +1,7 @@
 # mdTool
 
+**Versión 0.1.2** — Autor: lnca
+
 Visor y editor de ficheros Markdown (`.md`) con entorno gráfico, hecho en Lazarus / Free Pascal.
 
 Vista dividida: editas a la izquierda en `TSynEdit` y ves el resultado a la derecha en `THtmlViewer`, con actualización automática.
@@ -18,6 +20,8 @@ Vista dividida: editas a la izquierda en `TSynEdit` y ves el resultado a la dere
 - Fuente del editor configurable (persiste entre sesiones)
 - Tamaño del visor ajustable (persiste entre sesiones)
 - Visor maximizado con `F11`; al abrir con fichero como parámetro arranca maximizado
+- Disposición vertical (lado a lado) u horizontal (uno encima de otro) desde el menú **Ver** (persiste entre sesiones)
+- Clic en el visor: mueve el cursor del editor a la línea correspondiente
 - Parser Markdown propio (`markdown.pas`): headings, énfasis, código (cercado e indentado), listas, citas, enlaces, imágenes, líneas horizontales y **tablas GFM** con alineación (`:--`, `:-:`, `--:`)
 - Estilos del visor y la exportación en una sola hoja (`MarkdownCss`): bloques de código y citas con fondo propio, tablas con rejilla simple y filas alternadas
 - Barra de estado: fichero, modificado, línea/columna, zoom del visor
@@ -33,7 +37,7 @@ Vista dividida: editas a la izquierda en `TSynEdit` y ves el resultado a la dere
 | Cortar / Copiar / Pegar  | `Ctrl+X` `Ctrl+C` `Ctrl+V` |
 | Seleccionar todo         | `Ctrl+A`             |
 | Negrita / Cursiva        | `Ctrl+B` / `Ctrl+I`  |
-| Tachado / Código / Enlace| `Ctrl+D` / `` Ctrl+` `` / `Ctrl+K` |
+| Tachado / Código / Enlace| `Ctrl+D` / `Ctrl+J` / `Ctrl+K` |
 | Título 1 / 2 / 3         | `Ctrl+1` / `Ctrl+2` / `Ctrl+3` |
 | Cita / Lista             | `Ctrl+Q` / `Ctrl+L`  |
 | Buscar / siguiente / anterior | `Ctrl+F` / `F3` / `Mayús+F3` |
@@ -43,6 +47,7 @@ Vista dividida: editas a la izquierda en `TSynEdit` y ves el resultado a la dere
 | Agrandar / achicar visor | `Ctrl++` / `Ctrl+-`  |
 | Restablecer zoom         | `Ctrl+0`             |
 | Actualizar vista previa  | `F5`                 |
+| Maximizar visor          | `F11`                |
 
 ## Requisitos
 
@@ -67,6 +72,15 @@ lazbuild mdtool.lpi
 > Si el enlazado GTK2 falla por falta de `libgtk2.0-dev`
 > (`cannot find -lgdk-x11-2.0`), instálalo con
 > `sudo apt install libgtk2.0-dev`.
+
+## Instalar el paquete .deb
+
+Cada [release](https://github.com/lncoll/mdTool/releases) incluye `mdtool_X.Y.Z_amd64.deb`:
+
+```bash
+sudo dpkg -i mdtool_0.1.2_amd64.deb
+mdtool documento.md
+```
 
 ## Problemas conocidos
 

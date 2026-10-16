@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=mdTool
+Comment=Editor y visor de Markdown
+Exec=mdtool %F
+Icon=mdtool
+Terminal=false
+Categories=Office;TextEditor;
+MimeType=text/markdown;text/x-markdown;
+StartupWMClass=mdtool
