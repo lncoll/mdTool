@@ -95,6 +95,9 @@ type
     mnuZoomMas: TMenuItem;
     mnuZoomMenos: TMenuItem;
     mnuZoomReset: TMenuItem;
+    mnuDisposicion: TMenuItem;
+    mnuDispVertical: TMenuItem;
+    mnuDispHorizontal: TMenuItem;
     mnuSepVer3: TMenuItem;
     mnuMaxVisor: TMenuItem;
     mnuAyuda: TMenuItem;
@@ -160,6 +163,7 @@ type
     procedure mnuZoomMasClick(Sender: TObject);
     procedure mnuZoomMenosClick(Sender: TObject);
     procedure mnuZoomResetClick(Sender: TObject);
+    procedure mnuDisposicionClick(Sender: TObject);
     procedure mnuMaxVisorClick(Sender: TObject);
     procedure mnuAcercaDeClick(Sender: TObject);
   private
@@ -176,6 +180,8 @@ type
     FPreviewHeadLen: Integer;
     FPreviewFragLen: Integer;
     FNoSyncScroll: Boolean;
+    FVerticalSplit: Boolean;
+    procedure ApplySplitLayout;
     procedure SetDocFileName(Doc: TDocInfo; const AValue: string);
     procedure SetDocModified(Doc: TDocInfo; AValue: Boolean);
     procedure RefreshDocTitle(Doc: TDocInfo);
@@ -293,8 +299,9 @@ begin
   OpenDialog1.Options := OpenDialog1.Options + [ofAllowMultiSelect];
   // X de cierre en cada pestaña (lo pinta el widgetset)
   PageControl1.Options := PageControl1.Options + [nboShowCloseButtons];
-  LoadPrefs; // fuente del editor + zoom del visor
+  LoadPrefs; // fuente del editor + zoom del visor + disposición
   ApplyViewerZoom;
+  ApplySplitLayout;
   // Atajos visibles en el menú. Los de zoom se dibujan en el Caption
   // (tras tab) porque '+' no existe como tecla LCL y mostraría NumPlus.
   // El manejo real está en FormKeyDown con KeyPreview=True,
@@ -856,7 +863,6 @@ begin
   end;
   if Ed.CanSetFocus then
     Ed.SetFocus;
-  ShowStatus('Visor → línea ' + IntToStr(Ed.CaretXY.Y));
 end;
 
 procedure TFrmMain.PageControl1CloseTabClicked(Sender: TObject);
@@ -1444,6 +1450,42 @@ begin
   SetViewerMax(not FViewerMax);
 end;
 
+procedure TFrmMain.mnuDisposicionClick(Sender: TObject);
+begin
+  FVerticalSplit := (Sender as TMenuItem).Tag = 0;
+  ApplySplitLayout;
+end;
+
+procedure TFrmMain.ApplySplitLayout;
+var
+  Half: Integer;
+begin
+  if FVerticalSplit then
+  begin
+    // Lado a lado: editor a la izquierda
+    pnlEditor.Align := alLeft;
+    Splitter1.Align := alLeft;
+    Splitter1.Width := 6;
+    Half := (ClientWidth - Splitter1.Width) div 2;
+    if Half < 200 then
+      Half := 200;
+    pnlEditor.Width := Half;
+  end
+  else
+  begin
+    // Uno encima de otro: editor arriba
+    pnlEditor.Align := alTop;
+    Splitter1.Align := alTop;
+    Splitter1.Height := 6;
+    Half := (ClientHeight - Splitter1.Height) div 2;
+    if Half < 100 then
+      Half := 100;
+    pnlEditor.Height := Half;
+  end;
+  mnuDispVertical.Checked := FVerticalSplit;
+  mnuDispHorizontal.Checked := not FVerticalSplit;
+end;
+
 procedure TFrmMain.SetViewerMax(AValue: Boolean);
 begin
   FViewerMax := AValue;
@@ -1625,6 +1667,7 @@ begin
   FEditorFontName := 'Monospace';
   FEditorFontSize := 10;
   FViewerFontSize := 12;
+  FVerticalSplit := True;
   Cfg := ConfigFile;
   if not FileExists(Cfg) then
     Exit;
@@ -1633,6 +1676,7 @@ begin
     FEditorFontName := Ini.ReadString('Editor', 'FontName', FEditorFontName);
     FEditorFontSize := Ini.ReadInteger('Editor', 'FontSize', FEditorFontSize);
     FViewerFontSize := Ini.ReadInteger('Viewer', 'FontSize', FViewerFontSize);
+    FVerticalSplit := Ini.ReadBool('View', 'VerticalSplit', FVerticalSplit);
     if FViewerFontSize < 8 then
       FViewerFontSize := 8;
     if FViewerFontSize > 32 then
@@ -1655,6 +1699,7 @@ begin
       Ini.WriteString('Editor', 'FontName', FEditorFontName);
       Ini.WriteInteger('Editor', 'FontSize', FEditorFontSize);
       Ini.WriteInteger('Viewer', 'FontSize', FViewerFontSize);
+      Ini.WriteBool('View', 'VerticalSplit', FVerticalSplit);
       Ini.UpdateFile;
     finally
       Ini.Free;

@@ -261,6 +261,21 @@ object FrmMain: TFrmMain
         Caption = '&Restablecer zoom visor'
         OnClick = mnuZoomResetClick
       end
+      object mnuDisposicion: TMenuItem
+        Caption = 'Dis&posición'
+        object mnuDispVertical: TMenuItem
+          Tag = 0
+          Caption = '&Vertical (lado a lado)'
+          RadioItem = True
+          OnClick = mnuDisposicionClick
+        end
+        object mnuDispHorizontal: TMenuItem
+          Tag = 1
+          Caption = '&Horizontal (uno encima de otro)'
+          RadioItem = True
+          OnClick = mnuDisposicionClick
+        end
+      end
       object mnuSepVer3: TMenuItem
         Caption = '-'
       end
