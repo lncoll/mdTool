@@ -97,8 +97,7 @@ finddlg.lfm   diseño del diálogo
 - [x] Resaltado Markdown en SynEdit (`TSynMarkdownSyn`)
 - [ ] Task-lists y footnotes GFM
 - [x] Buscar / reemplazar (diálogo no-modal, regex, wrap)
-- [ ] Pestañas multi-documento
-- [x] Arrastrar y soltar `.md` (`Application.OnDropFiles`)
 - [x] Pestañas multi-documento
+- [x] Arrastrar y soltar `.md` (`Application.OnDropFiles`)
 - [ ] Tema oscuro
 - [ ] Exportar a PDF

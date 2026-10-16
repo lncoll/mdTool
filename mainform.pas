@@ -117,6 +117,8 @@ type
     procedure PageControl1CloseTabClicked(Sender: TObject);
     procedure ViewPopupPopup(Sender: TObject);
     procedure popCopiarVerClick(Sender: TObject);
+    procedure HtmlPreviewRightClick(Sender: TObject;
+      Parameters: TRightClickParameters);
     procedure SynEditorChange(Sender: TObject);
     procedure SynEditorStatusChange(Sender: TObject;
       Changes: TSynStatusChanges);
@@ -744,13 +746,27 @@ end;
 
 procedure TFrmMain.ViewPopupPopup(Sender: TObject);
 begin
-  // Copiar solo con selección en el visor
-  popCopiarVer.Enabled := HtmlPreview.SelLength > 0;
+  // Copiar solo con selección en el visor.
+  // Ojo: THtmlViewer.SelLength devuelve un valor NEGATIVO al seleccionar
+  // hacia delante (el caret queda al final), así que no vale "> 0"; lo que
+  // interesa es que no sea cero (0 = sin selección).
+  popCopiarVer.Enabled := HtmlPreview.SelLength <> 0;
 end;
 
 procedure TFrmMain.popCopiarVerClick(Sender: TObject);
 begin
   HtmlPreview.CopyToClipboard;
+end;
+
+procedure TFrmMain.HtmlPreviewRightClick(Sender: TObject;
+  Parameters: TRightClickParameters);
+var
+  P: TPoint;
+begin
+  // El THtmlViewer pinta en un PaintPanel interior que se come los clics:
+  // el popup del control exterior nunca llegaría. Se abre a mano.
+  P := Mouse.CursorPos;
+  ViewPopup.PopUp(P.X, P.Y);
 end;
 
 procedure TFrmMain.PageControl1CloseTabClicked(Sender: TObject);

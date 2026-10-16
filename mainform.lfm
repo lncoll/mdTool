@@ -61,7 +61,7 @@ object FrmMain: TFrmMain
       Width = 549
       Align = alClient
       TabOrder = 0
-      PopupMenu = ViewPopup
+      OnRightClick = HtmlPreviewRightClick
     end
   end
   object StatusBar1: TStatusBar
