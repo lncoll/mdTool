@@ -14,6 +14,14 @@ type
   end;
   TMarkdownLineMap = array of TMarkdownLineInfo;
 
+  { Nivel de lista abierta (para anidado por indentación). }
+  TListLevel = record
+    Indent: Integer;  { indentación del marcador que abrió el nivel }
+    Ordered: Boolean;
+    Numb: Integer;    { contador para <ol> }
+    LiOpen: Boolean;  { hay un <li> sin cerrar en este nivel }
+  end;
+
 { Convierte Markdown a fragmento HTML (para THtmlViewer). }
 function MarkdownToHtml(const Md: string): string;
 
@@ -60,6 +68,32 @@ var
     const Delim: string): Integer;
   begin
     Result := PosEx(Delim, Src, StartPos);
+  end;
+
+  { Cierre de marca simple (* o _): salta los pares (** / __), que
+    pertenecen al otro nivel de anidado (p. ej. la negrita dentro
+    de *cursiva con **negrita** dentro*). }
+  function FindClosingSingle(const Src: string; StartPos: Integer;
+    Delim: Char): Integer;
+  var
+    p: Integer;
+  begin
+    Result := 0;
+    p := StartPos;
+    while True do
+    begin
+      p := PosEx(Delim, Src, p);
+      if p = 0 then
+        Exit;
+      if ((p > 1) and (Src[p - 1] = Delim)) or
+        ((p < Length(Src)) and (Src[p + 1] = Delim)) then
+      begin
+        Inc(p);
+        Continue;
+      end;
+      Result := p;
+      Exit;
+    end;
   end;
 
 var
@@ -133,6 +167,20 @@ begin
     if (i + 1 <= Len) and (((S[i] = '*') and (S[i + 1] = '*')) or
       ((S[i] = '_') and (S[i + 1] = '_'))) then
     begin
+      // ***x*** o ___x___: negrita y cursiva a la vez (cierre triple).
+      // Sin esto, el cierre doble "muerde" una marca y deja sueltos *x*.
+      if (i + 2 <= Len) and (S[i + 2] = S[i]) then
+      begin
+        CloseP := FindClosing(S, i + 3, Copy(S, i, 3));
+        if CloseP > 0 then
+        begin
+          Res += '<b><i>' + ProcessInline(Copy(S, i + 3, CloseP - (i + 3))) +
+            '</i></b>';
+          i := CloseP + 3;
+          Continue;
+        end;
+        // Sin cierre triple: se intenta la vía normal de negrita
+      end;
       CloseP := FindClosing(S, i + 2, Copy(S, i, 2));
       if CloseP > 0 then
       begin
@@ -148,7 +196,7 @@ begin
     // Cursiva *..* o _.._
     if (S[i] = '*') or (S[i] = '_') then
     begin
-      CloseP := FindClosing(S, i + 1, S[i]);
+      CloseP := FindClosingSingle(S, i + 1, S[i]);
       if CloseP > 0 then
       begin
         Res += '<i>' + ProcessInline(Copy(S, i + 1, CloseP - (i + 1))) +
@@ -247,6 +295,25 @@ begin
   Result := Count >= 3;
 end;
 
+{ Línea de subrayado setext: solo '=' (h1) o solo '-' (h2). }
+function SetextLevel(const TrimmedLine: string): Integer;
+var
+  k: Integer;
+begin
+  Result := 0;
+  if TrimmedLine = '' then
+    Exit;
+  if TrimmedLine[1] = '=' then
+    Result := 1
+  else if TrimmedLine[1] = '-' then
+    Result := 2
+  else
+    Exit;
+  for k := 2 to Length(TrimmedLine) do
+    if TrimmedLine[k] <> TrimmedLine[1] then
+      Exit(0);
+end;
+
 function HeadingLevel(const Line: string; out Content: string): Integer;
 var
   i: Integer;
@@ -267,20 +334,45 @@ begin
     Result := 0;
 end;
 
+{ Indentación en columnas (tabulador = 4). Devuelve también cuántos
+  caracteres del inicio ocupa. }
+procedure MeasureIndent(const Line: string; out Indent, CharCount: Integer);
+var
+  k: Integer;
+begin
+  Indent := 0;
+  k := 1;
+  while (k <= Length(Line)) and (Line[k] in [' ', #9]) do
+  begin
+    if Line[k] = #9 then
+      Inc(Indent, 4)
+    else
+      Inc(Indent);
+    Inc(k);
+  end;
+  CharCount := k - 1;
+end;
+
+{ Solo la indentación en columnas. }
+function LineIndentOf(const Line: string): Integer;
+var
+  Dummy: Integer;
+begin
+  MeasureIndent(Line, Result, Dummy);
+end;
+
 function ListItem(const Line: string; out Ordered: Boolean;
-  out Content: string): Boolean;
+  out Content: string; out Indent: Integer; out StartNumb: Integer): Boolean;
 var
   T: string;
-  i: Integer;
+  i, CharCount: Integer;
 begin
   Result := False;
   Ordered := False;
-  T := TrimLeft(Line);
+  StartNumb := 1;
+  MeasureIndent(Line, Indent, CharCount);
+  T := TrimLeft(Copy(Line, CharCount + 1, MaxInt));
   if T = '' then
-    Exit;
-  // No lista: línea indentada 4+ espacios se trata como código (se gestiona fuera)
-  if (Length(Line) > 0) and (Line[1] = ' ') and
-    (Length(Line) - Length(T) >= 4) then
     Exit;
   if (T[1] = '-') or (T[1] = '*') or (T[1] = '+') then
   begin
@@ -292,13 +384,16 @@ begin
       Exit;
     end;
   end;
-  // Lista ordenada: "1. texto"
+  // Lista ordenada: "1. texto" (vale cualquier número inicial)
   i := 1;
   while (i <= Length(T)) and (T[i] in ['0'..'9']) do
     Inc(i);
   if (i > 1) and (i + 1 <= Length(T)) and (T[i] = '.') and (T[i + 1] = ' ') then
   begin
     Content := Trim(Copy(T, i + 2, MaxInt));
+    StartNumb := StrToIntDef(Copy(T, 1, i - 1), 1);
+    if StartNumb < 1 then
+      StartNumb := 1;
     Result := True;
     Ordered := True;
   end;
@@ -412,6 +507,9 @@ begin
     'margin-left:0;margin-right:0;padding:0.5em 1em;color:#333333;' +
     'border-radius:8px}' +
     'table{border-collapse:collapse;margin-top:1em;margin-bottom:1em}' +
+    'ol,ul{margin-top:0;margin-bottom:1em;padding-left:2.5em}' +
+    'li{margin:0;padding:0}' +
+    'ol{list-style-type:none}' +
     'th,td{border:1px solid #B0B8C4;padding:4px 10px}' +
     'thead tr{background-color:#E3E9F2}' +
     'tbody tr.alt{background-color:#F2F5F9}' +
@@ -426,18 +524,79 @@ var
   Line, Trimmed, Content: string;
   InCode, InPara, InQuote: Boolean;
   InList: Boolean;
-  ListOrdered: Boolean;
   HLevel: Integer;
   IsOrd: Boolean;
   ItemContent: string;
+  ItemIndent: Integer;
+  ItemStart: Integer;
+  ListStack: array of TListLevel;
+  ParaFirst: Integer; { línea 0-based donde empezó el <p> abierto }
+  ParaStart: Integer; { offset HTML donde empieza el <p> abierto }
+  k: Integer;
 
-  { Registra el bloque que empieza en la línea i (0-based):
+  { Registra el bloque que empieza en la línea ALine (0-based, i si < 0):
     offset actual del HTML (0-based) -> línea Markdown (1-based). }
-  procedure MarkMap;
+  procedure MarkMap(ALine: Integer = -1);
   begin
     SetLength(LineMap, Length(LineMap) + 1);
     LineMap[High(LineMap)].HtmlPos := Length(Result);
-    LineMap[High(LineMap)].MdLine := i + 1;
+    if ALine >= 0 then
+      LineMap[High(LineMap)].MdLine := ALine + 1
+    else
+      LineMap[High(LineMap)].MdLine := i + 1;
+  end;
+
+  { Números romanos (vale para cualquier N >= 1). }
+  function RomanNumeral(N: Integer; Upper: Boolean): string;
+  const
+    Vals: array[0..12] of Integer =
+      (1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1);
+    Syms: array[0..12] of string =
+      ('M', 'CM', 'D', 'CD', 'C', 'XC', 'L', 'XL', 'X', 'IX', 'V', 'IV', 'I');
+  var
+    k: Integer;
+  begin
+    Result := '';
+    if N < 1 then
+      N := 1;
+    for k := 0 to High(Vals) do
+      while N >= Vals[k] do
+      begin
+        Result += Syms[k];
+        Dec(N, Vals[k]);
+      end;
+    if not Upper then
+      Result := LowerCase(Result);
+  end;
+
+  { Letras estilo planilla: 1=a .. 26=z, 27=aa, 28=ab ... }
+  function AlphaNumeral(N: Integer; Upper: Boolean): string;
+  begin
+    Result := '';
+    if N < 1 then
+      N := 1;
+    while N > 0 do
+    begin
+      Dec(N);
+      Result := Chr(Ord('a') + (N mod 26)) + Result;
+      N := N div 26;
+    end;
+    if Upper then
+      Result := UpperCase(Result);
+  end;
+
+  { Marcador según profundidad (1-based): 1,2,3... / i,ii... / a,b... /
+    I,II... / A,B... (cíclico a partir del nivel 6). }
+  function OrderedMarker(Depth, N: Integer): string;
+  begin
+    case ((Depth - 1) mod 5) of
+      0: Result := IntToStr(N);
+      1: Result := RomanNumeral(N, False);
+      2: Result := AlphaNumeral(N, False);
+      3: Result := RomanNumeral(N, True);
+    else
+      Result := AlphaNumeral(N, True);
+    end;
   end;
 
   procedure ClosePara;
@@ -446,6 +605,7 @@ var
     begin
       Result += '</p>' + LineEnding;
       InPara := False;
+      ParaFirst := -1;
     end;
   end;
 
@@ -460,16 +620,61 @@ var
   end;
 
   procedure CloseList;
+  var
+    L: Integer;
   begin
-    if InList then
+    ClosePara;
+    // Cierra todos los niveles (con sus <li> pendientes)
+    for L := High(ListStack) downto 0 do
     begin
-      ClosePara;
-      if ListOrdered then
+      if ListStack[L].LiOpen then
+        Result += '</li>' + LineEnding;
+      if ListStack[L].Ordered then
         Result += '</ol>' + LineEnding
       else
         Result += '</ul>' + LineEnding;
-      InList := False;
     end;
+    SetLength(ListStack, 0);
+    InList := False;
+  end;
+
+  { Cierra el nivel superior (con su <li> pendiente). }
+  procedure CloseListLevel;
+  var
+    T: Integer;
+  begin
+    T := High(ListStack);
+    if T < 0 then
+      Exit;
+    if ListStack[T].LiOpen then
+      Result += '</li>' + LineEnding;
+    if ListStack[T].Ordered then
+      Result += '</ol>' + LineEnding
+    else
+      Result += '</ul>' + LineEnding;
+    SetLength(ListStack, T);
+    InList := Length(ListStack) > 0;
+  end;
+
+  { Abre un (sub)nivel de lista. StartNumb es el número del primer
+    ítem si es ordenada (las listas que no empiezan en 1 lo respetan). }
+  procedure OpenListLevel(IsOrd: Boolean; Indent, StartNumb: Integer);
+  var
+    T: Integer;
+  begin
+    if IsOrd then
+      Result += '<ol>' + LineEnding
+    else
+      Result += '<ul>' + LineEnding;
+    T := Length(ListStack);
+    SetLength(ListStack, T + 1);
+    ListStack[T].Indent := Indent;
+    ListStack[T].Ordered := IsOrd;
+    if StartNumb < 1 then
+      StartNumb := 1;
+    ListStack[T].Numb := StartNumb - 1;
+    ListStack[T].LiOpen := False;
+    InList := True;
   end;
 
   procedure EmitTable;
@@ -543,6 +748,8 @@ begin
     InPara := False;
     InQuote := False;
     InList := False;
+    ParaFirst := -1;
+    ParaStart := 0;
     i := 0;
     while i < Lines.Count do
     begin
@@ -561,7 +768,11 @@ begin
         begin
           ClosePara;
           CloseQuote;
-          CloseList;
+          // Si está indentado al contenido del ítem abierto, va anidado
+          // en el <li> (sin cerrar la lista).
+          if not (InList and (LineIndentOf(Line) >=
+            ListStack[High(ListStack)].Indent + 2)) then
+            CloseList;
           MarkMap;
           Result += '<pre>' + LineEnding;
           InCode := True;
@@ -585,6 +796,30 @@ begin
         Continue;
       end;
 
+      // Headings setext: === / --- bajo un párrafo lo convierten en h1/h2.
+      // Va antes que HR: '---' tras párrafo es subrayado, no línea.
+      // Solo a nivel superior (en citas se deja como estaba).
+      HLevel := SetextLevel(Trimmed);
+      if (HLevel > 0) and InPara and (ParaFirst >= 0) and not InQuote then
+      begin
+        // Rebobina el <p> abierto y reemite como heading
+        SetLength(Result, ParaStart);
+        Content := '';
+        for k := ParaFirst to i - 1 do
+        begin
+          if Content <> '' then
+            Content += ' ';
+          Content += ProcessInline(Trim(Lines[k]));
+        end;
+        Result += '<h' + IntToStr(HLevel) + '>' + Content +
+          '</h' + IntToStr(HLevel) + '>' + LineEnding;
+        MarkMap(ParaFirst);
+        InPara := False;
+        ParaFirst := -1;
+        Inc(i);
+        Continue;
+      end;
+
       // HR
       if IsHr(Line) then
       begin
@@ -597,14 +832,19 @@ begin
         Continue;
       end;
 
-      // Tabla GFM: cabecera con '|' + fila delimitadora
-      if (Pos('|', Line) > 0) and (Copy(Line, 1, 4) <> '    ') and
-        (Copy(Trimmed, 1, 1) <> #9) and (i + 1 < Lines.Count) and
-        IsTableDelim(Lines[i + 1]) then
+      // Tabla GFM: cabecera con '|' + fila delimitadora.
+      // Indentada al contenido del ítem va anidada en el <li>.
+      if (Pos('|', Line) > 0) and (Copy(Trimmed, 1, 1) <> #9) and
+        ((Copy(Line, 1, 4) <> '    ') or
+         (InList and (LineIndentOf(Line) >=
+           ListStack[High(ListStack)].Indent + 2))) and
+        (i + 1 < Lines.Count) and IsTableDelim(Lines[i + 1]) then
       begin
         ClosePara;
         CloseQuote;
-        CloseList;
+        if not (InList and (LineIndentOf(Line) >=
+          ListStack[High(ListStack)].Indent + 2)) then
+          CloseList;
         EmitTable; // avanza i hasta la primera línea tras la tabla
         Continue;
       end;
@@ -633,11 +873,14 @@ begin
         if not InQuote then
         begin
           ClosePara;
-          CloseList;
+          // Cita indentada al contenido del ítem: anidada en el <li>.
+          if not (InList and (LineIndentOf(Line) >=
+            ListStack[High(ListStack)].Indent + 2)) then
+            CloseList;
           MarkMap;
           Result += '<blockquote>' + LineEnding;
           InQuote := True;
-        end;
+        end;;
         if Content = '' then
           ClosePara
         else
@@ -645,6 +888,8 @@ begin
           // Dentro de cita permitimos párrafo simple
           if not InPara then
           begin
+            ParaStart := Length(Result);
+            ParaFirst := i;
             Result += '<p>' + ProcessInline(Content);
             InPara := True;
           end
@@ -675,41 +920,63 @@ begin
         CloseQuote;
       end;
 
-      // Listas
-      if ListItem(Line, IsOrd, ItemContent) then
+      // Listas. Los números de las ordenadas se emiten como texto
+      // ("1. ", "2. ", ...): el motor ignora TA_BASELINE al dibujar sus
+      // marcadores y los deja una línea bajos. Con list-style-type:none
+      // no dibuja marcador y el número fluye con el texto, alineado.
+      // La indentación define el nivel (listas anidadas); el </li> se
+      // difiere para que las sublistas queden dentro del ítem padre.
+      // Una marca con indentación 4+ sin lista abierta es código (como antes).
+      if ListItem(Line, IsOrd, ItemContent, ItemIndent, ItemStart) then
       begin
         ClosePara;
-        if not InList then
+        if (Length(ListStack) = 0) and (ItemIndent >= 4) then
         begin
-          if IsOrd then
-            Result += '<ol>' + LineEnding
-          else
-            Result += '<ul>' + LineEnding;
-          InList := True;
-          ListOrdered := IsOrd;
+          // Sangrado de código sin lista abierta: no es lista.
+          // (cae al tratamiento de código indentado de abajo)
         end
-        else if IsOrd <> ListOrdered then
+        else
         begin
-          // Cambio de tipo de lista: cierra y abre
-          if ListOrdered then
-            Result += '</ol>' + LineEnding
+          // Cierra niveles menos indentados que el ítem
+          while (Length(ListStack) > 0) and
+            (ItemIndent < ListStack[High(ListStack)].Indent) do
+            CloseListLevel;
+          if (Length(ListStack) = 0) or
+            (ItemIndent >= ListStack[High(ListStack)].Indent + 2) then
+            OpenListLevel(IsOrd, ItemIndent, ItemStart) // nueva o sublista
+          else if IsOrd <> ListStack[High(ListStack)].Ordered then
+          begin
+            // Mismo nivel, otro tipo: cierra y reabre
+            CloseListLevel;
+            OpenListLevel(IsOrd, ItemIndent, ItemStart);
+          end;
+          // Si el nivel tenía un <li> abierto, ciérralo antes del nuevo
+          if ListStack[High(ListStack)].LiOpen then
+            Result += '</li>' + LineEnding;
+          MarkMap; // cada ítem apunta a su línea
+          if ListStack[High(ListStack)].Ordered then
+          begin
+            Inc(ListStack[High(ListStack)].Numb);
+            Result += '<li>' + OrderedMarker(Length(ListStack),
+              ListStack[High(ListStack)].Numb) + '. ' +
+              ProcessInline(ItemContent);
+          end
           else
-            Result += '</ul>' + LineEnding;
-          if IsOrd then
-            Result += '<ol>' + LineEnding
-          else
-            Result += '<ul>' + LineEnding;
-          ListOrdered := IsOrd;
+            Result += '<li>' + ProcessInline(ItemContent);
+          Result += LineEnding;
+          ListStack[High(ListStack)].LiOpen := True;
+          Inc(i);
+          Continue;
         end;
-        MarkMap; // cada ítem apunta a su línea
-        Result += '<li>' + ProcessInline(ItemContent) + '</li>' + LineEnding;
-        Inc(i);
-        Continue;
       end
       else if InList then
       begin
-        // Fin de lista (línea no-item y no vacía -> cerrar)
-        CloseList;
+        // Fin de lista... salvo contenido indentado al ítem abierto
+        // (párrafo, cita o código anidados: se emiten dentro del <li>).
+        if LineIndentOf(Line) < ListStack[High(ListStack)].Indent + 2 then
+          CloseList;
+        // Si no: sigue dentro del <li> abierto (lo gestionan los
+        // tratamientos de párrafo/cita/código de abajo).
       end;
 
       // Código indentado (4 espacios)
@@ -727,16 +994,18 @@ begin
       if not InPara then
       begin
         MarkMap;
-        Result += '<p>' + ProcessInline(Line);
+        ParaStart := Length(Result);
+        ParaFirst := i;
+        Result += '<p>' + ProcessInline(Trimmed);
         InPara := True;
       end
       else
       begin
         if (Length(Line) >= 2) and
           (Copy(Line, Length(Line) - 1, 2) = '  ') then
-          Result += '<br>' + LineEnding + ProcessInline(Line)
+          Result += '<br>' + LineEnding + ProcessInline(Trimmed)
         else
-          Result += ' ' + ProcessInline(Line);
+          Result += ' ' + ProcessInline(Trimmed);
       end;
       Inc(i);
     end;

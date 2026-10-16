@@ -81,9 +81,9 @@ X^2^ (superíndice - extensión)
 
 - Elemento 1
 - Elemento 2
-  - Sub-elemento 2.1
-  - Sub-elemento 2.2
-    - Sub-sub-elemento 2.2.1
+  - Elemento 2.1
+  - Elemento 2.2
+    - Elemento 2.2.1
 - Elemento 3
 
 * Alternativa con asterisco
@@ -95,6 +95,8 @@ X^2^ (superíndice - extensión)
 2. Segundo elemento
    1. Sub-elemento 2.1
    2. Sub-elemento 2.2
+      1. Elemento 2.2.1
+         1. Elemento 2.2.1.1
 3. Tercer elemento
 
 ### Listas ordenadas con inicio personalizado
@@ -122,9 +124,18 @@ X^2^ (superíndice - extensión)
 
   > Cita dentro de una lista
 
+- Tercer elemento
+
   ```js
   const codigo = "dentro de lista";
   ```
+
+- Cuarto elemento
+  |Tabla|en|Lista|
+  |---|---|---|
+  |A|1|i|
+  |B|2|ii|
+  |C|3|iii|
 
 ### Listas de definición
 

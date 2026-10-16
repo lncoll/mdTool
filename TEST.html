@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>TEST</title><style>body{font-family:sans-serif;line-height:1.5;margin:1em}h1,h2,h3{line-height:1.25}pre{background-color:#D8E6F9;font-family:monospace;padding:1em;overflow:auto;border-radius:8px}code{background-color:#D8E6F9;font-family:monospace;padding-left:0.2em;padding-right:0.2em}blockquote{background-color:#EDF2FA;border-left:4px solid #9DB8D9;margin-left:0;margin-right:0;padding:0.5em 1em;color:#333333;border-radius:8px}table{border-collapse:collapse;margin-top:1em;margin-bottom:1em}ol,ul{margin-top:0;margin-bottom:1em;padding-left:2.5em}li{margin:0;padding:0}ol{list-style-type:none}th,td{border:1px solid #B0B8C4;padding:4px 10px}thead tr{background-color:#E3E9F2}tbody tr.alt{background-color:#F2F5F9}a{color:#0B5CAD}body{max-width:800px;margin:2em auto;padding:0 1em}</style></head><body>
+<h1>Guía Completa de Markdown para Testing de Visores</h1>
+<p>Este documento contiene <b>todas las opciones posibles</b> de Markdown para probar un visor. Incluye sintaxis estándar, extensiones comunes y casos extremos.</p>
+<hr>
+<h2>Tabla de Contenidos</h2>
+<ul>
+<li><a href="#1-encabezados">1. Encabezados</a>
+</li>
+<li><a href="#2-énfasis-y-formato">2. Énfasis y Formato</a>
+</li>
+<li><a href="#3-listas">3. Listas</a>
+</li>
+<li><a href="#4-enlaces">4. Enlaces</a>
+</li>
+<li><a href="#5-imágenes">5. Imágenes</a>
+</li>
+<li><a href="#6-código">6. Código</a>
+</li>
+<li><a href="#7-citas">7. Citas</a>
+</li>
+<li><a href="#8-tablas">8. Tablas</a>
+</li>
+<li><a href="#9-líneas-horizontales">9. Líneas Horizontales</a>
+</li>
+<li><a href="#10-saltos-de-línea">10. Saltos de Línea</a>
+</li>
+<li><a href="#11-html-inline">11. HTML Inline</a>
+</li>
+<li><a href="#12-escapes">12. Escapes</a>
+</li>
+<li><a href="#13-footnotes">13. Footnotes</a>
+</li>
+<li><a href="#14-listas-de-tareas">14. Listas de Tareas</a>
+</li>
+<li><a href="#15-definiciones">15. Definiciones</a>
+</li>
+<li><a href="#16-emojis">16. Emojis</a>
+</li>
+<li><a href="#17-matemáticas">17. Matemáticas</a>
+</li>
+<li><a href="#18-diagramas">18. Diagramas</a>
+</li>
+<li><a href="#19-casos-extremos">19. Casos Extremos</a>
+</li>
+</ul>
+<hr>
+<h2>1. Encabezados</h2>
+<h1>H1 - Encabezado Nivel 1</h1>
+<h2>H2 - Encabezado Nivel 2</h2>
+<h3>H3 - Encabezado Nivel 3</h3>
+<h4>H4 - Encabezado Nivel 4</h4>
+<h5>H5 - Encabezado Nivel 5</h5>
+<h6>H6 - Encabezado Nivel 6</h6>
+<h3>Encabezados alternativos (Setext)</h3>
+<h1>Encabezado H1 Alternativo</h1>
+<h2>Encabezado H2 Alternativo</h2>
+<h3>Encabezado con ID personalizado {#mi-id}</h3>
+<h3>Encabezado con <i>énfasis</i> y <code>código</code></h3>
+<hr>
+<h2>2. Énfasis y Formato</h2>
+<p><i>Texto en cursiva</i> o <i>también cursiva</i></p>
+<p><b>Texto en negrita</b> o <b>también negrita</b></p>
+<p><b><i>Negrita y cursiva</i></b> o <b><i>también</i></b></p>
+<p><strike>Texto tachado</strike></p>
+<p>==Texto resaltado== (extensión)</p>
+<p>~Texto subrayado~ (extensión)</p>
+<p>H~2~O (subíndice - extensión)</p>
+<p>X^2^ (superíndice - extensión)</p>
+<p><b>Negrita con <i>cursiva anidada</i> dentro</b></p>
+<p><i>Cursiva con <b>negrita anidada</b> dentro</i></p>
+<hr>
+<h2>3. Listas</h2>
+<h3>Listas no ordenadas</h3>
+<ul>
+<li>Elemento 1
+</li>
+<li>Elemento 2
+<ul>
+<li>Elemento 2.1
+</li>
+<li>Elemento 2.2
+<ul>
+<li>Elemento 2.2.1
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Elemento 3
+</li>
+<li>Alternativa con asterisco
+</li>
+<li>Alternativa con más
+</li>
+</ul>
+<h3>Listas ordenadas</h3>
+<ol>
+<li>1. Primer elemento
+</li>
+<li>2. Segundo elemento
+<ol>
+<li>i. Sub-elemento 2.1
+</li>
+<li>ii. Sub-elemento 2.2
+<ol>
+<li>a. Elemento 2.2.1
+<ol>
+<li>I. Elemento 2.2.1.1
+</li>
+</ol>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li>3. Tercer elemento
+</li>
+</ol>
+<h3>Listas ordenadas con inicio personalizado</h3>
+<ol>
+<li>5. Comienza en 5
+</li>
+<li>6. Siguiente
+</li>
+<li>7. Siguiente
+</li>
+</ol>
+<h3>Listas mixtas</h3>
+<ol>
+<li>1. Elemento ordenado
+<ul>
+<li>Sub-elemento no ordenado
+</li>
+<li>Otro sub-elemento
+</li>
+</ul>
+</li>
+<li>2. Segundo elemento ordenado
+<ol>
+<li>i. Sub-elemento ordenado
+</li>
+<li>ii. Otro sub-elemento
+</li>
+</ol>
+</li>
+</ol>
+<h3>Listas sueltas (con párrafos)</h3>
+<ul>
+<li>Primer elemento
+</li>
+</ul>
+<p>  Este es un párrafo dentro de un elemento de lista.</p>
+<ul>
+<li>Segundo elemento
+</li>
+</ul>
+<blockquote>
+<p>Cita dentro de una lista</p>
+</blockquote>
+<pre>
+  const codigo = &quot;dentro de lista&quot;;
+</pre>
+<h3>Listas de definición</h3>
+<p>Término 1 : Definición del término 1</p>
+<p>Término 2 : Definición del término 2 : Segunda definición del término 2</p>
+<hr>
+<h2>4. Enlaces</h2>
+<p><a href="https://www.ejemplo.com">Enlace simple</a></p>
+<p><a href="https://www.ejemplo.com &quot;Título del enlace&quot;">Enlace con título</a></p>
+<p>[Enlace de referencia][ref1]</p>
+<p>[Enlace de referencia con texto diferente][ref1]</p>
+<p><a href="https://www.enlace-automatico.com">https://www.enlace-automatico.com</a></p>
+<p>&lt;correo@ejemplo.com&gt;</p>
+<p><a href="../ruta/relativa">Enlace relativo</a></p>
+<p><a href="#1-encabezados">Enlace a ancla</a></p>
+<p>https://www.enlace-sin-formato.com</p>
+<p>[ref1]: https://www.ejemplo.com &quot;Referencia 1&quot;</p>
+<h3>Enlaces con formato</h3>
+<p><a href="https://ejemplo.com"><b>Enlace en negrita</b></a></p>
+<p><a href="https://ejemplo.com"><i>Enlace en cursiva</i></a></p>
+<p><a href="https://ejemplo.com"><code>Enlace con código</code></a></p>
+<hr>
+<h2>5. Imágenes</h2>
+<p><img src="https://via.placeholder.com/150 &quot;Título de imagen&quot;" alt="Texto alternativo"></p>
+<p>![Imagen de referencia][img1]</p>
+<p><a href="https://via.placeholder.com/100">![Imagen con enlace</a>](https://ejemplo.com)</p>
+<p><img src="https://via.placeholder.com/200x100" alt="Imagen con dimensiones"></p>
+<p>[img1]: https://via.placeholder.com/150 &quot;Imagen de referencia&quot;</p>
+<h3>Imagen con HTML</h3>
+<p><a href="img src=&quot;https://via.placeholder.com/150&quot; alt=&quot;HTML img&quot; width=&quot;150&quot; height=&quot;150&quot;">img src=&quot;https://via.placeholder.com/150&quot; alt=&quot;HTML img&quot; width=&quot;150&quot; height=&quot;150&quot;</a></p>
+<hr>
+<h2>6. Código</h2>
+<h3>Código inline</h3>
+<p>Usa <code>console.log()</code> para imprimir en consola.</p>
+<p>Usa <code></code> <code> </code>` para escapar backticks.</p>
+<h3>Bloque de código simple</h3>
+<pre>
+Código sin lenguaje especificado
+Línea 2
+Línea 3
+</pre>
+<h3>Bloque con lenguaje (JavaScript)</h3>
+<pre>
+function saludar(nombre) {
+  console.log(`Hola, ${nombre}!`);
+  return true;
+}
+
+saludar(&quot;Mundo&quot;);
+</pre>
+<h3>Bloque con lenguaje (Python)</h3>
+<pre>
+def saludar(nombre: str) -&gt; bool:
+    &quot;&quot;&quot;Docstring de ejemplo.&quot;&quot;&quot;
+    print(f&quot;Hola, {nombre}!&quot;)
+    return True
+
+saludar(&quot;Mundo&quot;)
+</pre>
+<h3>Bloque con lenguaje (HTML)</h3>
+<pre>
+&lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;es&quot;&gt;
+&lt;head&gt;
+  &lt;meta charset=&quot;UTF-8&quot;&gt;
+  &lt;title&gt;Ejemplo&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;h1&gt;Hola Mundo&lt;/h1&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<h3>Bloque con lenguaje (CSS)</h3>
+<pre>
+body {
+  font-family: Arial, sans-serif;
+  color: #333;
+  background: linear-gradient(45deg, #fff, #eee);
+}
+</pre>
+<h3>Bloque con lenguaje (JSON)</h3>
+<pre>
+{
+  &quot;nombre&quot;: &quot;Ejemplo&quot;,
+  &quot;valores&quot;: [1, 2, 3],
+  &quot;activo&quot;: true,
+  &quot;nulo&quot;: null
+}
+</pre>
+<h3>Bloque con lenguaje (SQL)</h3>
+<pre>
+SELECT id, nombre, email
+FROM usuarios
+WHERE activo = 1
+ORDER BY nombre ASC;
+</pre>
+<h3>Bloque con lenguaje (Bash)</h3>
+<pre>
+#!/bin/bash
+echo &quot;Hola Mundo&quot;
+for i in {1..5}; do
+  echo &quot;Iteración $i&quot;
+done
+</pre>
+<h3>Bloque con lenguaje (Diff)</h3>
+<pre>
+- línea eliminada
++ línea añadida
+  línea sin cambios
+</pre>
+<h3>Bloque con resaltado de líneas</h3>
+<pre>
+const a = 1;  // resaltada
+const b = 2;
+const c = 3;  // resaltada
+const d = 4;  // resaltada
+</pre>
+<h3>Código con backticks anidados</h3>
+<pre>
+</pre>
+<p>const x = &quot;código dentro de código&quot;;</p>
+<pre>
+</pre>
+<hr>
+<h2>7. Citas</h2>
+<blockquote>
+<p>Cita simple de una línea.</p>
+</blockquote>
+<blockquote>
+<p>Cita de múltiples líneas. Continúa aquí. Y aquí.</p>
+</blockquote>
+<blockquote>
+<p>Cita con <b>negrita</b> y <i>cursiva</i>.</p>
+<p>&gt; Cita anidada. &gt; &gt; &gt; Cita anidada más profunda.</p>
+</blockquote>
+<blockquote>
+<p>### Encabezado dentro de cita</p>
+<p>- Lista dentro de cita - Otro elemento</p>
+<p><code></code>`js const enCita = true; <code></code>`</p>
+</blockquote>
+<blockquote>
+<p>Cita con salto de línea forzado.</p>
+</blockquote>
+<hr>
+<h2>8. Tablas</h2>
+<h3>Tabla básica</h3>
+<table>
+<thead>
+<tr>
+<th>Columna 1</th>
+<th>Columna 2</th>
+<th>Columna 3</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>B</td>
+<td>C</td>
+</tr>
+<tr class="alt">
+<td>D</td>
+<td>E</td>
+<td>F</td>
+</tr>
+</tbody></table>
+<h3>Tabla con alineación</h3>
+<table>
+<thead>
+<tr>
+<th align="left">Izquierda</th>
+<th align="center">Centro</th>
+<th align="right">Derecha</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left">Texto</td>
+<td align="center">Texto</td>
+<td align="right">Texto</td>
+</tr>
+<tr class="alt">
+<td align="left">Más</td>
+<td align="center">Más</td>
+<td align="right">Más</td>
+</tr>
+</tbody></table>
+<h3>Tabla con formato inline</h3>
+<table>
+<thead>
+<tr>
+<th>Formato</th>
+<th>Ejemplo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Negrita</td>
+<td><b>texto</b></td>
+</tr>
+<tr class="alt">
+<td>Cursiva</td>
+<td><i>texto</i></td>
+</tr>
+<tr>
+<td>Código</td>
+<td><code>código</code></td>
+</tr>
+<tr class="alt">
+<td>Enlace</td>
+<td><a href="https://a.com">link</a></td>
+</tr>
+</tbody></table>
+<h3>Tabla con celdas vacías</h3>
+<table>
+<thead>
+<tr>
+<th>A</th>
+<th>B</th>
+<th>C</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td></td>
+<td>3</td>
+</tr>
+<tr class="alt">
+<td></td>
+<td>2</td>
+<td></td>
+</tr>
+</tbody></table>
+<h3>Tabla con pipes escapados</h3>
+<table>
+<thead>
+<tr>
+<th>Columna</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a | b</td>
+</tr>
+<tr class="alt">
+<td>c | d</td>
+</tr>
+</tbody></table>
+<h3>Tabla con HTML</h3>
+<table>
+<thead>
+<tr>
+<th>Columna</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Fila</td>
+<td>&lt;b&gt;Negrita HTML&lt;/b&gt;</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>9. Líneas Horizontales</h2>
+<hr>
+<hr>
+<hr>
+<hr>
+<hr>
+<hr>
+<hr>
+<h2>10. Saltos de Línea</h2>
+<p>Línea 1   Línea 2 (dos espacios al final)</p>
+<p>Línea 3\ Línea 4 (backslash al final)</p>
+<p>Línea 5</p>
+<p>Línea 6 (párrafo separado)</p>
+<hr>
+<h2>11. HTML Inline</h2>
+<p>Texto con &lt;b&gt;negrita HTML&lt;/b&gt;, &lt;i&gt;cursiva&lt;/i&gt;, &lt;u&gt;subrayado&lt;/u&gt;.</p>
+<p>Texto con &lt;span style=&quot;color: red;&quot;&gt;color rojo&lt;/span&gt;.</p>
+<p>Texto con &lt;mark&gt;resaltado&lt;/mark&gt;.</p>
+<p>Texto con &lt;kbd&gt;Ctrl&lt;/kbd&gt; + &lt;kbd&gt;C&lt;/kbd&gt;.</p>
+<p>&lt;details&gt; &lt;summary&gt;Click para expandir&lt;/summary&gt;</p>
+<p>Contenido oculto que se muestra al hacer clic.</p>
+<ul>
+<li>Elemento 1
+</li>
+<li>Elemento 2
+</li>
+</ul>
+<p>&lt;/details&gt;</p>
+<p>&lt;br&gt;</p>
+<p>&lt;hr&gt;</p>
+<p>&lt;sub&gt;Texto subíndice&lt;/sub&gt; y &lt;sup&gt;Texto superíndice&lt;/sup&gt;</p>
+<p>&lt;abbr title=&quot;HyperText Markup Language&quot;&gt;HTML&lt;/abbr&gt;</p>
+<p>&lt;cite&gt;Referencia bibliográfica&lt;/cite&gt;</p>
+<p>&lt;del&gt;Texto eliminado&lt;/del&gt; y &lt;ins&gt;Texto insertado&lt;/ins&gt;</p>
+<hr>
+<h2>12. Escapes</h2>
+<p>\<i>Asterisco escapado\</i></p>
+<p>\<i>Guion bajo escapado\</i></p>
+<p>\<code>Backtick escapado\</code></p>
+<p>\# Almohadilla escapada</p>
+<p>\[Corchete escapado\]</p>
+<p>\\ Barra invertida</p>
+<p>\~ Tilde escapada</p>
+<p>\| Pipe escapado</p>
+<hr>
+<h2>13. Footnotes</h2>
+<p>Este es un texto con nota al pie[^1].</p>
+<p>Otra nota al pie con nombre[^nota-nombre].</p>
+<p>[^1]: Contenido de la nota al pie número 1.</p>
+<p>[^nota-nombre]: Contenido de la nota con nombre personalizado.</p>
+<pre>Puede tener múltiples líneas.</pre>
+<hr>
+<h2>14. Listas de Tareas</h2>
+<ul>
+<li>[x] Tarea completada
+</li>
+<li>[ ] Tarea pendiente
+</li>
+<li>[x] Otra tarea completada
+<ul>
+<li>[x] Subtarea completada
+</li>
+<li>[ ] Subtarea pendiente
+</li>
+</ul>
+</li>
+<li>[ ] Tarea con <b>formato</b>
+</li>
+</ul>
+<hr>
+<h2>15. Definiciones</h2>
+<p>Manzana : Fruta roja o verde.</p>
+<p>Naranja : Fruta cítrica. : Color entre rojo y amarillo.</p>
+<hr>
+<h2>16. Emojis</h2>
+<p>:smile: :heart: :rocket: :thumbsup: :warning: :bug: :sparkles:</p>
+<p>Emojis Unicode directos: 😀 ❤️ 🚀 👍 ⚠️ 🐛 ✨</p>
+<hr>
+<h2>17. Matemáticas</h2>
+<h3>Inline</h3>
+<p>La fórmula $E = mc^2$ es famosa.</p>
+<p>La ecuación \(a^2 + b^2 = c^2\) es pitagórica.</p>
+<h3>Bloque</h3>
+<p>$$ \int_{0}^{\infty} e^{-x^2} dx = \frac{\sqrt{\pi}}{2} $$</p>
+<p>$$ \begin{pmatrix} a &amp; b \\ c &amp; d \end{pmatrix} $$</p>
+<hr>
+<h2>18. Diagramas</h2>
+<h3>Mermaid - Flowchart</h3>
+<pre>
+graph TD
+    A[Inicio] --&gt; B{¿Condición?}
+    B --&gt;|Sí| C[Acción 1]
+    B --&gt;|No| D[Acción 2]
+    C --&gt; E[Fin]
+    D --&gt; E
+</pre>
+<h3>Mermaid - Sequence</h3>
+<pre>
+sequenceDiagram
+    participant A as Usuario
+    participant B as Servidor
+    A-&gt;&gt;B: Petición
+    B--&gt;&gt;A: Respuesta
+</pre>
+<h3>Mermaid - Gantt</h3>
+<pre>
+gantt
+    title Ejemplo de Gantt
+    dateFormat  YYYY-MM-DD
+    section Fase 1
+    Tarea 1 :a1, 2024-01-01, 30d
+    Tarea 2 :after a1, 20d
+</pre>
+<hr>
+<h2>19. Casos Extremos</h2>
+<h3>Caracteres especiales</h3>
+<p>&amp; &lt; &gt; &quot; ' © ® ™ € £ ¥ § ¶ † ‡ • … ‰ ′ ″ ‹ › « »</p>
+<h3>Unicode</h3>
+<p>á é í ó ú ñ ü Á É Í Ó Ú Ñ Ü</p>
+<p>中文 日本語 한국어 العربية עברית русский</p>
+<h3>Texto largo sin espacios</h3>
+<p>EstoEsUnaPalabraMuyLargaSinEspaciosQueDeberiaRomperElDisenoDelVisorSiNoSeManejaCorrectamenteEstoEsUnaPalabraMuyLargaSinEspacios.</p>
+<h3>Anidamiento profundo</h3>
+<blockquote>
+<p>Nivel 1 &gt; Nivel 2 &gt; &gt; Nivel 3 &gt; &gt; &gt; Nivel 4 &gt; &gt; &gt; &gt; Nivel 5</p>
+</blockquote>
+<h3>Lista con muchos niveles</h3>
+<ul>
+<li>Nivel 1
+<ul>
+<li>Nivel 2
+<ul>
+<li>Nivel 3
+<ul>
+<li>Nivel 4
+<ul>
+<li>Nivel 5
+<ul>
+<li>Nivel 6
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3>Combinación de todo</h3>
+<blockquote>
+<p>### Título en cita</p>
+<p>Texto con <b>negrita</b>, <i>cursiva</i>, <code>código</code> y <a href="https://ejemplo.com">enlace</a>.</p>
+<p>| Tabla | En   | |-------|------| | Cita  | Sí   |</p>
+<p>- [x] Tarea en cita - [ ] Otra tarea</p>
+<p><code></code>`python print(&quot;código en cita&quot;) <code></code>`</p>
+</blockquote>
+<h3>Referencias no definidas</h3>
+<p>[Enlace roto][no-existe]</p>
+<h3>Imagen rota</h3>
+<p><img src="ruta/inexistente.png" alt="Imagen que no existe"></p>
+<h3>Tabla malformada</h3>
+<table>
+<thead>
+<tr>
+<th>A</th>
+<th>B</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>2</td>
+</tr>
+</tbody></table>
+<h3>HTML complejo</h3>
+<p>&lt;div style=&quot;border: 2px solid #333; padding: 10px; border-radius: 5px;&quot;&gt;   &lt;h4&gt;Div con estilos&lt;/h4&gt;   &lt;p&gt;Contenido dentro de un div con &lt;strong&gt;estilos inline&lt;/strong&gt;.&lt;/p&gt;   &lt;ul&gt;</p>
+<pre>&lt;li&gt;Item HTML 1&lt;/li&gt;</pre>
+<pre>&lt;li&gt;Item HTML 2&lt;/li&gt;</pre>
+<p>  &lt;/ul&gt; &lt;/div&gt;</p>
+<hr>
+<h2>Conclusión</h2>
+<p>Este documento cubre:</p>
+<ul>
+<li>✅ Sintaxis estándar de Markdown
+</li>
+<li>✅ Extensiones comunes (GFM, footnotes, tareas)
+</li>
+<li>✅ HTML inline y en bloque
+</li>
+<li>✅ Matemáticas (LaTeX)
+</li>
+<li>✅ Diagramas (Mermaid)
+</li>
+<li>✅ Casos extremos y errores
+</li>
+</ul>
+<p><b>Fin del documento de testing.</b></p>
+
+</body></html>
