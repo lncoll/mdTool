@@ -204,7 +204,6 @@ type
     procedure ApplyViewerZoom;
     procedure SetViewerMax(AValue: Boolean);
     procedure FocusVisiblePane;
-    procedure AsyncFirstFocus(Data: PtrInt);
     procedure ApplyEditMenuMode;
     {$ifdef LCLGTK2}
     procedure RestyleTabCloseButtons;
@@ -381,16 +380,6 @@ begin
   {$ifdef LCLGTK2}
   RestyleTabCloseButtons;
   {$endif}
-  // El foco inicial se difiere al primer idle: pedirlo durante el Show,
-  // con la ventana aún sin mapear por el WM, puede colgar el arranque.
-  Application.QueueAsyncCall(@AsyncFirstFocus, 0);
-end;
-
-procedure TFrmMain.AsyncFirstFocus(Data: PtrInt);
-begin
-  if Data <> 0 then
-    Exit;
-  FocusVisiblePane;
 end;
 
 procedure TFrmMain.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
@@ -1569,7 +1558,9 @@ begin
 end;
 
 // Al ocultar un panel su foco se pierde: hay que pasarlo al visible.
-// (Sin esto, en visor maximizado no hay foco en ningún sitio.)
+// Solo se llama desde acciones del usuario (ventana mapeada y activa),
+// nunca durante el arranque: pedir foco al visor antes de que el WM
+// mapee la ventana cuelga el arranque de forma intermitente.
 procedure TFrmMain.FocusVisiblePane;
 begin
   if FViewerMax then
