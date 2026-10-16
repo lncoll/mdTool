@@ -204,6 +204,7 @@ type
     procedure ApplyViewerZoom;
     procedure SetViewerMax(AValue: Boolean);
     procedure FocusVisiblePane;
+    procedure AsyncFirstFocus(Data: PtrInt);
     procedure ApplyEditMenuMode;
     {$ifdef LCLGTK2}
     procedure RestyleTabCloseButtons;
@@ -380,7 +381,15 @@ begin
   {$ifdef LCLGTK2}
   RestyleTabCloseButtons;
   {$endif}
-  // Foco inicial según modo (en FormCreate aún no es posible dárselo).
+  // El foco inicial se difiere al primer idle: pedirlo durante el Show,
+  // con la ventana aún sin mapear por el WM, puede colgar el arranque.
+  Application.QueueAsyncCall(@AsyncFirstFocus, 0);
+end;
+
+procedure TFrmMain.AsyncFirstFocus(Data: PtrInt);
+begin
+  if Data <> 0 then
+    Exit;
   FocusVisiblePane;
 end;
 
