@@ -175,6 +175,7 @@ type
     FPreviewMap: TMarkdownLineMap;
     FPreviewHeadLen: Integer;
     FPreviewFragLen: Integer;
+    FNoSyncScroll: Boolean;
     procedure SetDocFileName(Doc: TDocInfo; const AValue: string);
     procedure SetDocModified(Doc: TDocInfo; AValue: Boolean);
     procedure RefreshDocTitle(Doc: TDocInfo);
@@ -551,6 +552,8 @@ begin
   if Sender <> ActiveEditor then
     Exit;
   UpdateStatus;
+  if FNoSyncScroll then
+    Exit; // salto desde el visor: no desplazarlo en mitad del click
   if [scCaretY, scTopLine] * Changes <> [] then
     SyncPreviewScroll;
 end;
@@ -839,10 +842,21 @@ begin
   MdLine := MarkdownLineAt(FPreviewMap, FragPos);
   if (MdLine < 1) or (MdLine > Ed.Lines.Count) then
     Exit;
-  Ed.CaretXY := Point(1, MdLine);
-  Ed.EnsureCursorPosVisible;
+  // Salto síncrono, pero sin desplazar el visor: mover el caret dispara
+  // SyncPreviewScroll, y en mitad del MouseUp el DoHilite posterior
+  // calcularía la selección con el scroll ya cambiado (selección fantasma
+  // de varias líneas). El visor ya está donde el usuario clicó; el editor
+  // se centra en la línea con EnsureCursorPosVisible.
+  FNoSyncScroll := True;
+  try
+    Ed.CaretXY := Point(1, MdLine);
+    Ed.EnsureCursorPosVisible;
+  finally
+    FNoSyncScroll := False;
+  end;
   if Ed.CanSetFocus then
     Ed.SetFocus;
+  ShowStatus('Visor → línea ' + IntToStr(Ed.CaretXY.Y));
 end;
 
 procedure TFrmMain.PageControl1CloseTabClicked(Sender: TObject);
