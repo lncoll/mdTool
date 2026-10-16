@@ -6,8 +6,8 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, Menus, ComCtrls,
-  ExtCtrls, IniFiles, LCLType, htmlview, HTMLSubs, SynEdit, SynEditTypes,
-  SynMarkdown, Markdown
+  ExtCtrls, IniFiles, LCLType, LCLIntf, htmlview, HTMLSubs, HtmlGlobals,
+  SynEdit, SynEditTypes, SynMarkdown, Markdown
   {$ifdef LCLGTK2}, gtk2, gdk2pixbuf, glib2{$endif}
   ;
 
@@ -101,6 +101,7 @@ type
     mnuSepVer3: TMenuItem;
     mnuMaxVisor: TMenuItem;
     mnuAyuda: TMenuItem;
+    mnuAyudaContenido: TMenuItem;
     mnuAcercaDe: TMenuItem;
     pnlEditor: TPanel;
     PageControl1: TPageControl;
@@ -125,6 +126,8 @@ type
     procedure popCopiarVerClick(Sender: TObject);
     procedure HtmlPreviewRightClick(Sender: TObject;
       Parameters: TRightClickParameters);
+    procedure HtmlPreviewHotSpotClick(Sender: TObject;
+      const SRC: ThtString; var Handled: Boolean);
     procedure HtmlPreviewSectionClick(Sender: TObject; Obj: TSectionBase;
       Button: TMouseButton; Shift: TShiftState; X, Y, IX, IY: Integer);
     procedure SynEditorChange(Sender: TObject);
@@ -165,6 +168,7 @@ type
     procedure mnuZoomResetClick(Sender: TObject);
     procedure mnuDisposicionClick(Sender: TObject);
     procedure mnuMaxVisorClick(Sender: TObject);
+    procedure mnuAyudaContenidoClick(Sender: TObject);
     procedure mnuAcercaDeClick(Sender: TObject);
   private
     FLoading: Boolean;
@@ -199,6 +203,7 @@ type
     procedure ApplyEditorFont;
     procedure ApplyViewerZoom;
     procedure SetViewerMax(AValue: Boolean);
+    procedure FocusVisiblePane;
     procedure ApplyEditMenuMode;
     {$ifdef LCLGTK2}
     procedure RestyleTabCloseButtons;
@@ -230,7 +235,7 @@ var
 implementation
 
 uses
-  FindDlg;
+  FindDlg, HelpDlg;
 
 {$R *.lfm}
 
@@ -347,6 +352,7 @@ begin
   mnuZoomMenos.ShortCut := 0;
   mnuZoomReset.ShortCut := ShortCut(Ord('0'), [ssCtrl]);
   mnuMaxVisor.ShortCut := ShortCut(VK_F11, []);
+  mnuAyudaContenido.ShortCut := ShortCut(VK_F1, []);
   mnuCerrarTab.ShortCut := ShortCut(Ord('W'), [ssCtrl]);
   mnuCerrarTab.ShortCut := ShortCut(Ord('W'), [ssCtrl]);
   mnuAutoActualizar.Checked := True;
@@ -374,6 +380,8 @@ begin
   {$ifdef LCLGTK2}
   RestyleTabCloseButtons;
   {$endif}
+  // Foco inicial según modo (en FormCreate aún no es posible dárselo).
+  FocusVisiblePane;
 end;
 
 procedure TFrmMain.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
@@ -407,7 +415,14 @@ end;
 procedure TFrmMain.FormKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
-  // F3/F11 funcionan con y sin Ctrl (el editor no los consume)
+  // F1/F3/F11 funcionan con y sin Ctrl (el editor no los consume)
+  if (Key = VK_F1) and not (ssCtrl in Shift) and not (ssAlt in Shift) and
+    not (ssMeta in Shift) then
+  begin
+    mnuAyudaContenidoClick(Self);
+    Key := 0;
+    Exit;
+  end;
   if (Key = VK_F3) and not (ssAlt in Shift) and not (ssMeta in Shift) then
   begin
     if ssCtrl in Shift then
@@ -852,6 +867,22 @@ begin
   // el popup del control exterior nunca llegaría. Se abre a mano.
   P := Mouse.CursorPos;
   ViewPopup.PopUp(P.X, P.Y);
+end;
+
+procedure TFrmMain.HtmlPreviewHotSpotClick(Sender: TObject;
+  const SRC: ThtString; var Handled: Boolean);
+var
+  U: string;
+begin
+  // Los enlaces externos se abren en el navegador del sistema.
+  // Los internos (#ancla) los gestiona el propio visor.
+  U := string(SRC);
+  if (Pos('://', U) > 0) or (Pos('mailto:', LowerCase(U)) = 1) then
+  begin
+    Handled := True;
+    if not OpenURL(U) then
+      ShowStatus('No se pudo abrir: ' + U);
+  end;
 end;
 
 procedure TFrmMain.HtmlPreviewSectionClick(Sender: TObject;
@@ -1525,6 +1556,20 @@ begin
   Splitter1.Visible := not FViewerMax;
   mnuMaxVisor.Checked := FViewerMax;
   ApplyEditMenuMode;
+  FocusVisiblePane;
+end;
+
+// Al ocultar un panel su foco se pierde: hay que pasarlo al visible.
+// (Sin esto, en visor maximizado no hay foco en ningún sitio.)
+procedure TFrmMain.FocusVisiblePane;
+begin
+  if FViewerMax then
+  begin
+    if HtmlPreview.CanSetFocus then
+      HtmlPreview.SetFocus;
+  end
+  else if (ActiveEditor <> nil) and ActiveEditor.CanSetFocus then
+    ActiveEditor.SetFocus;
 end;
 
 procedure TFrmMain.ApplyEditMenuMode;
@@ -1559,6 +1604,11 @@ begin
   ShowMessage('mdTool 0.1.2' + LineEnding +
     'Visor/editor de Markdown en Lazarus/Free Pascal.' + LineEnding +
     'Autor: lncoll.');
+end;
+
+procedure TFrmMain.mnuAyudaContenidoClick(Sender: TObject);
+begin
+  ShowHelpDialog(Self);
 end;
 
 procedure TFrmMain.UpdatePreview;

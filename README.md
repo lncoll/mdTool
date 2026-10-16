@@ -20,9 +20,11 @@ Vista dividida: editas a la izquierda en `TSynEdit` y ves el resultado a la dere
 - Visor maximizado con `F11`; al abrir con fichero como parámetro arranca maximizado
 - Disposición vertical (lado a lado) u horizontal (uno encima de otro) desde el menú **Ver** (persiste entre sesiones)
 - Clic en el visor: mueve el cursor del editor a la línea correspondiente
+- Clic en un enlace externo: se abre en el navegador del sistema
 - Parser Markdown propio (`markdown.pas`): headings, énfasis, código (cercado e indentado), listas, citas, enlaces, imágenes, líneas horizontales y **tablas GFM** con alineación (`:--`, `:-:`, `--:`)
 - Estilos del visor y la exportación en una sola hoja (`MarkdownCss`): bloques de código y citas con fondo propio, tablas con rejilla simple y filas alternadas
 - Barra de estado: fichero, modificado, línea/columna, zoom del visor
+- Ayuda integrada (`F1`) y Acerca de con versión y autor
 - Arrastrar y soltar ficheros `.md` / `.markdown` / `.txt` sobre la ventana
 - Apertura desde línea de comandos: `mdtool documento.md`
 

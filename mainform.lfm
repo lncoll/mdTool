@@ -63,6 +63,7 @@ object FrmMain: TFrmMain
       Align = alClient
       TabOrder = 0
       OnRightClick = HtmlPreviewRightClick
+      OnHotSpotClick = HtmlPreviewHotSpotClick
       OnSectionClick = HtmlPreviewSectionClick
     end
   end
@@ -286,6 +287,10 @@ object FrmMain: TFrmMain
     end
     object mnuAyuda: TMenuItem
       Caption = 'A&yuda'
+      object mnuAyudaContenido: TMenuItem
+        Caption = 'A&yuda...'
+        OnClick = mnuAyudaContenidoClick
+      end
       object mnuAcercaDe: TMenuItem
         Caption = '&Acerca de...'
         OnClick = mnuAcercaDeClick

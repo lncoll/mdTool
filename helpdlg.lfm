@@ -1,0 +1,33 @@
+object FrmHelp: TFrmHelp
+  Left = 500
+  Height = 440
+  Top = 200
+  Width = 560
+  BorderStyle = bsDialog
+  Caption = 'Ayuda de mdTool'
+  ClientHeight = 440
+  ClientWidth = 560
+  Position = poMainFormCenter
+  LCLVersion = '4.4.0.0'
+  object memHelp: TMemo
+    Left = 12
+    Height = 376
+    Top = 12
+    Width = 536
+    TabOrder = 0
+    ReadOnly = True
+    ScrollBars = ssVertical
+    WordWrap = False
+  end
+  object btnClose: TButton
+    Left = 452
+    Height = 30
+    Top = 398
+    Width = 96
+    Cancel = True
+    Caption = '&Cerrar'
+    Default = True
+    TabOrder = 1
+    OnClick = btnCloseClick
+  end
+end

@@ -70,6 +70,14 @@
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="FindDlg"/>
       </Unit4>
+      <Unit5>
+        <Filename Value="helpdlg.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="FrmHelp"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="HelpDlg"/>
+      </Unit5>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
