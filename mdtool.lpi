@@ -78,6 +78,11 @@
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="HelpDlg"/>
       </Unit5>
+      <Unit6>
+        <Filename Value="imgfetch.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="ImgFetch"/>
+      </Unit6>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

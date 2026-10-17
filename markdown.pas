@@ -20,6 +20,7 @@ type
     Ordered: Boolean;
     Numb: Integer;    { contador para <ol> }
     LiOpen: Boolean;  { hay un <li> sin cerrar en este nivel }
+    QDepth: Integer;  { profundidad de cita en la que se abrió }
   end;
 
 { Convierte Markdown a fragmento HTML (para THtmlViewer). }
@@ -59,15 +60,65 @@ begin
   Result := StringReplace(Result, '"', '&quot;', [rfReplaceAll]);
 end;
 
+{ ¿Parece una dirección de correo (para autolinks <a@b.c>)? }
+function IsEmailAddr(const S: string): Boolean;
+var
+  At, k: Integer;
+  Dom: string;
+begin
+  Result := False;
+  At := Pos('@', S);
+  // Un solo @, ni al inicio ni al final
+  if (At <= 1) or (At <> LastDelimiter('@', S)) or (At = Length(S)) then
+    Exit;
+  // Sin espacios ni <>
+  for k := 1 to Length(S) do
+    if S[k] in [' ', #9, '<', '>'] then
+      Exit;
+  // Dominio con punto interior (no al inicio/fin, sin "..")
+  Dom := Copy(S, At + 1, MaxInt);
+  if (Pos('.', Dom) < 2) or (Dom[Length(Dom)] = '.') then
+    Exit;
+  if Pos('..', Dom) > 0 then
+    Exit;
+  Result := True;
+end;
+
 function ProcessInline(const S: string): string;
 var
-  i, Len: Integer;
+  i, Len, RunLen: Integer;
   Res: string;
 
   function FindClosing(const Src: string; StartPos: Integer;
     const Delim: string): Integer;
   begin
     Result := PosEx(Delim, Src, StartPos);
+  end;
+
+  { Cierre de racha: busca una racha de Delim de longitud EXACTA Need
+    (para código inline `..` los cierres de distinta longitud no valen). }
+  function FindClosingRun(const Src: string; StartPos: Integer;
+    Delim: Char; Need: Integer): Integer;
+  var
+    p, k: Integer;
+  begin
+    Result := 0;
+    p := StartPos;
+    while p <= Length(Src) do
+    begin
+      p := PosEx(Delim, Src, p);
+      if p = 0 then
+        Exit;
+      k := p;
+      while (k <= Length(Src)) and (Src[k] = Delim) do
+        Inc(k);
+      if k - p = Need then
+      begin
+        Result := p;
+        Exit;
+      end;
+      p := k; // saltar la racha (un cierre no puede empezar dentro)
+    end;
   end;
 
   { Cierre de marca simple (* o _): salta los pares (** / __), que
@@ -94,6 +145,78 @@ var
       Result := p;
       Exit;
     end;
+  end;
+
+  { URL pelada http://..., https://... o www.... Añade el enlace a Res,
+    avanza i y devuelve True si había URL válida (extensión GFM). }
+  function TryBareLink: Boolean;
+  var
+    j, k, m, OpenP, CloseP, ContentStart: Integer;
+    Pfx, Url, Dom: string;
+  begin
+    Result := False;
+    j := i;
+    Pfx := '';
+    if (j + 6 <= Len) and (LowerCase(Copy(S, j, 7)) = 'http://') then
+      Inc(j, 7)
+    else if (j + 7 <= Len) and (LowerCase(Copy(S, j, 8)) = 'https://') then
+      Inc(j, 8)
+    else if (j + 3 <= Len) and (LowerCase(Copy(S, j, 4)) = 'www.') then
+    begin
+      Pfx := 'https://';
+      Inc(j, 4);
+      // Para www. exigir dominio con punto (y que empiece en alfanumérico)
+      if (j > Len) or not (S[j] in ['A'..'Z', 'a'..'z', '0'..'9']) then
+        Exit;
+      k := j;
+      while (k <= Len) and
+        (S[k] in ['A'..'Z', 'a'..'z', '0'..'9', '-', '.']) do
+        Inc(k);
+      Dom := Copy(S, j, k - j);
+      // Sin el punto final (es puntuación, no parte del dominio)
+      while (Dom <> '') and (Dom[Length(Dom)] = '.') do
+        Delete(Dom, Length(Dom), 1);
+      if (Dom = '') or (Pos('.', Dom) < 2) or
+        not (Dom[Length(Dom)] in ['A'..'Z', 'a'..'z', '0'..'9']) then
+        Exit;
+      if Pos('..', Dom) > 0 then
+        Exit;
+    end
+    else
+      Exit;
+    ContentStart := j;
+    while (j <= Len) and not (S[j] in [' ', #9, #10, #13, '<', '>',
+      '"', '''', '`']) do
+      Inc(j);
+    k := j - 1;
+    if k < ContentStart then
+      Exit;
+    // Recorta puntuación final (.,;:!?) y ')' sin abrir
+    while (k >= ContentStart) and (S[k] in ['.', ',', ';', ':', '!', '?']) do
+      Dec(k);
+    if k < ContentStart then
+      Exit;
+    OpenP := 0;
+    CloseP := 0;
+    for m := i to k do
+    begin
+      if S[m] = '(' then
+        Inc(OpenP)
+      else if S[m] = ')' then
+        Inc(CloseP);
+    end;
+    while (k >= ContentStart) and (S[k] = ')') and (CloseP > OpenP) do
+    begin
+      Dec(k);
+      Dec(CloseP);
+    end;
+    if k < ContentStart then
+      Exit;
+    Url := Copy(S, i, k - i + 1);
+    Res += '<a href="' + EscapeHtml(Pfx + Url) + '">' + EscapeHtml(Url) +
+      '</a>';
+    i := k + 1;
+    Result := True;
   end;
 
 var
@@ -148,15 +271,19 @@ begin
       Inc(i);
       Continue;
     end;
-    // Código inline `...`
+    // Código inline `...` (el cierre exige la misma racha de la apertura,
+    // así ``code `x` here`` no se corta en el primer backtick suelto)
     if S[i] = '`' then
     begin
-      p1 := PosEx('`', S, i + 1);
+      RunLen := 1;
+      while (i + RunLen <= Len) and (S[i + RunLen] = '`') do
+        Inc(RunLen);
+      p1 := FindClosingRun(S, i + RunLen, '`', RunLen);
       if p1 > 0 then
       begin
-        Res += '<code>' + EscapeHtml(Copy(S, i + 1, p1 - (i + 1))) +
+        Res += '<code>' + EscapeHtml(Copy(S, i + RunLen, p1 - (i + RunLen))) +
           '</code>';
-        i := p1 + 1;
+        i := p1 + RunLen;
         Continue;
       end;
       Res += EscapeHtml(S[i]);
@@ -223,7 +350,10 @@ begin
       Inc(i);
       Continue;
     end;
-    // URL autolink <http...>
+    // URL pelada http://..., https://... o www.... (extensión GFM)
+    if TryBareLink then
+      Continue;
+    // URL autolink <http...> y email <a@b.c>
     if S[i] = '<' then
     begin
       p1 := PosEx('>', S, i + 1);
@@ -234,6 +364,13 @@ begin
         begin
           Res += '<a href="' + EscapeHtml(Alt) + '">' + EscapeHtml(Alt) +
             '</a>';
+          i := p1 + 1;
+          Continue;
+        end;
+        if IsEmailAddr(Alt) then
+        begin
+          Res += '<a href="mailto:' + EscapeHtml(Alt) + '">' +
+            EscapeHtml(Alt) + '</a>';
           i := p1 + 1;
           Continue;
         end;
@@ -522,7 +659,7 @@ var
   Lines: TStringList;
   i: Integer;
   Line, Trimmed, Content: string;
-  InCode, InPara, InQuote: Boolean;
+  InCode, InPara: Boolean;
   InList: Boolean;
   HLevel: Integer;
   IsOrd: Boolean;
@@ -530,6 +667,12 @@ var
   ItemIndent: Integer;
   ItemStart: Integer;
   ListStack: array of TListLevel;
+  QuoteBase: array of Integer; { niveles de lista al abrir cada nivel de cita }
+  QDepth: Integer;     { niveles de cita de la línea actual }
+  QRest: string;       { la línea sin los marcadores '>' pelados }
+  QRIndent: Integer;   { indentación de la línea antes del '>' }
+  FenceQDepth: Integer; { profundidad de cita donde se abrió la valla }
+  FenceLen: Integer; { longitud de la valla de apertura (`..) o 0 }
   ParaFirst: Integer; { línea 0-based donde empezó el <p> abierto }
   ParaStart: Integer; { offset HTML donde empieza el <p> abierto }
   k: Integer;
@@ -609,16 +752,6 @@ var
     end;
   end;
 
-  procedure CloseQuote;
-  begin
-    if InQuote then
-    begin
-      ClosePara;
-      Result += '</blockquote>' + LineEnding;
-      InQuote := False;
-    end;
-  end;
-
   procedure CloseList;
   var
     L: Integer;
@@ -674,7 +807,70 @@ var
       StartNumb := 1;
     ListStack[T].Numb := StartNumb - 1;
     ListStack[T].LiOpen := False;
+    ListStack[T].QDepth := Length(QuoteBase);
     InList := True;
+  end;
+
+  { Pela niveles de cita '>' al inicio (tras espacios), hasta MaxDepth:
+    devuelve cuántos hay y el resto de la línea (sin el '>' ni un
+    espacio posterior). }
+  procedure PeelQuote(const S: string; MaxDepth: Integer;
+    out Depth: Integer; out Rest: string);
+  var
+    T: string;
+  begin
+    Depth := 0;
+    T := TrimLeft(S);
+    while (Depth < MaxDepth) and (T <> '') and (T[1] = '>') do
+    begin
+      Inc(Depth);
+      Delete(T, 1, 1);
+      if (T <> '') and (T[1] = ' ') then
+        Delete(T, 1, 1);
+    end;
+    Rest := T;
+  end;
+
+  { Contenido de una línea del documento ya sin los '>' de cita:
+    necesario para tablas/setext, que leen líneas posteriores o
+    anteriores que aún no ha pelado el bucle principal. }
+  function PeeledAt(Index: Integer): string;
+  var
+    D: Integer;
+  begin
+    PeelQuote(Lines[Index], Length(QuoteBase), D, Result);
+  end;
+
+  { Cierra UN nivel de cita (con sus listas internas). }
+  procedure CloseQuoteLevel;
+  begin
+    ClosePara;
+    while (Length(ListStack) > QuoteBase[High(QuoteBase)]) do
+      CloseListLevel;
+    Result += '</blockquote>' + LineEnding;
+    SetLength(QuoteBase, Length(QuoteBase) - 1);
+  end;
+
+  { Cierra todos los niveles de cita. }
+  procedure CloseQuote;
+  begin
+    while Length(QuoteBase) > 0 do
+      CloseQuoteLevel;
+  end;
+
+  { Abre un nivel de cita (RawIndent = indentación de la línea original,
+    para decidir si va anidada en un <li> abierto). }
+  procedure OpenQuoteLevel(RawIndent: Integer);
+  begin
+    ClosePara;
+    // Solo se cierra la lista si la cita NO va anidada en el ítem
+    if (Length(QuoteBase) = 0) and InList and
+      (RawIndent < ListStack[High(ListStack)].Indent + 2) then
+      CloseList;
+    MarkMap;
+    Result += '<blockquote>' + LineEnding;
+    SetLength(QuoteBase, Length(QuoteBase) + 1);
+    QuoteBase[High(QuoteBase)] := Length(ListStack);
   end;
 
   procedure EmitTable;
@@ -689,8 +885,8 @@ var
     RC := TStringList.Create;
     Aligns := TStringList.Create;
     try
-      SplitTableRow(Trim(Lines[i]), HC);
-      SplitTableRow(Trim(Lines[i + 1]), DC);
+      SplitTableRow(Trim(PeeledAt(i)), HC);
+      SplitTableRow(Trim(PeeledAt(i + 1)), DC);
       N := HC.Count;
       for c := 0 to N - 1 do
         if c < DC.Count then
@@ -706,10 +902,10 @@ var
         '<tbody>' + LineEnding;
       Inc(i, 2);
       RowIdx := 0;
-      while (i < Lines.Count) and (Trim(Lines[i]) <> '') and
-        (Pos('|', Lines[i]) > 0) and not IsTableDelim(Lines[i]) do
+      while (i < Lines.Count) and (Trim(PeeledAt(i)) <> '') and
+        (Pos('|', PeeledAt(i)) > 0) and not IsTableDelim(PeeledAt(i)) do
       begin
-        RLine := Trim(Lines[i]);
+        RLine := Trim(PeeledAt(i));
         SplitTableRow(RLine, RC);
         if Odd(RowIdx) then
           Result += '<tr class="alt">' + LineEnding
@@ -746,39 +942,94 @@ begin
     Lines.Text := StringReplace(Lines.Text, #13, #10, [rfReplaceAll]);
     InCode := False;
     InPara := False;
-    InQuote := False;
     InList := False;
+    FenceLen := 0;
+    FenceQDepth := 0;
     ParaFirst := -1;
     ParaStart := 0;
     i := 0;
     while i < Lines.Count do
     begin
       Line := Lines[i];
+
+      // Dentro de un cercado, la línea vacía no cierra nada (ni el
+      // bloque ni la cita en la que se abrió).
+      if InCode and (Trim(Line) = '') then
+      begin
+        Result += EscapeHtml(Line) + LineEnding;
+        Inc(i);
+        Continue;
+      end;
+
+      // Fase de citas: pela los marcadores '>' iniciales y ajusta la
+      // pila de <blockquote> a la profundidad de la línea. Dentro de un
+      // cercado solo se pela la profundidad donde se abrió la valla.
+      QRIndent := 0;
+      while (QRIndent < Length(Line)) and (Line[QRIndent + 1] = ' ') do
+        Inc(QRIndent);
+      if InCode then
+        PeelQuote(Line, FenceQDepth, QDepth, QRest)
+      else
+        PeelQuote(Line, MaxInt, QDepth, QRest);
+      if InCode and (QDepth < FenceQDepth) then
+      begin
+        // La línea sale de la cita donde se abrió la valla: cierra el
+        // bloque y la reprocesa como línea normal.
+        Result += '</pre>' + LineEnding;
+        InCode := False;
+        FenceLen := 0;
+        QDepth := 0;
+        QRest := Line;
+      end;
+      if QDepth > 0 then
+        Line := QRest;
       Trimmed := Trim(Line);
 
-      // Bloque de código cercado ```
+      // Ajusta la pila de citas a la profundidad de la línea (abre o
+      // cierra <blockquote> según haga falta; el contenido de la línea
+      // se procesa después con todos los elementos normales).
+      while Length(QuoteBase) > QDepth do
+        CloseQuoteLevel;
+      while Length(QuoteBase) < QDepth do
+        OpenQuoteLevel(QRIndent);
+
+      // Bloque de código cercado ``` (la valla de cierre debe ser
+      // al menos tan larga como la de apertura y sin texto detrás)
       if (Copy(Trimmed, 1, 3) = '```') then
       begin
-        if InCode then
+        k := 1;
+        while (k <= Length(Trimmed)) and (Trimmed[k] = '`') do
+          Inc(k);
+        if InCode and ((k - 1 < 3) or (k - 1 < FenceLen) or
+          (Trim(Copy(Trimmed, k, MaxInt)) <> '')) then
+        begin
+          // No es cierre válido: es contenido del bloque
+        end
+        else if InCode then
         begin
           Result += '</pre>' + LineEnding;
           InCode := False;
+          FenceLen := 0;
+          Inc(i);
+          Continue;
         end
         else
         begin
           ClosePara;
-          CloseQuote;
           // Si está indentado al contenido del ítem abierto, va anidado
-          // en el <li> (sin cerrar la lista).
-          if not (InList and (LineIndentOf(Line) >=
+          // en el <li> (sin cerrar la lista). La indentación relevante
+          // es la de la línea original (antes del '>' pelado).
+          if not (InList and (QRIndent >=
             ListStack[High(ListStack)].Indent + 2)) then
             CloseList;
           MarkMap;
           Result += '<pre>' + LineEnding;
           InCode := True;
+          FenceLen := k - 1;
+          FenceQDepth := QDepth; // recuerda la cita en la que se abrió
+          Inc(i);
+          Continue;
         end;
-        Inc(i);
-        Continue;
       end;
 
       if InCode then
@@ -798,9 +1049,8 @@ begin
 
       // Headings setext: === / --- bajo un párrafo lo convierten en h1/h2.
       // Va antes que HR: '---' tras párrafo es subrayado, no línea.
-      // Solo a nivel superior (en citas se deja como estaba).
       HLevel := SetextLevel(Trimmed);
-      if (HLevel > 0) and InPara and (ParaFirst >= 0) and not InQuote then
+      if (HLevel > 0) and InPara and (ParaFirst >= 0) then
       begin
         // Rebobina el <p> abierto y reemite como heading
         SetLength(Result, ParaStart);
@@ -809,7 +1059,7 @@ begin
         begin
           if Content <> '' then
             Content += ' ';
-          Content += ProcessInline(Trim(Lines[k]));
+          Content += ProcessInline(PeeledAt(k));
         end;
         Result += '<h' + IntToStr(HLevel) + '>' + Content +
           '</h' + IntToStr(HLevel) + '>' + LineEnding;
@@ -824,7 +1074,6 @@ begin
       if IsHr(Line) then
       begin
         ClosePara;
-        CloseQuote;
         CloseList;
         MarkMap;
         Result += '<hr>' + LineEnding;
@@ -836,13 +1085,12 @@ begin
       // Indentada al contenido del ítem va anidada en el <li>.
       if (Pos('|', Line) > 0) and (Copy(Trimmed, 1, 1) <> #9) and
         ((Copy(Line, 1, 4) <> '    ') or
-         (InList and (LineIndentOf(Line) >=
+         (InList and (QRIndent >=
            ListStack[High(ListStack)].Indent + 2))) and
-        (i + 1 < Lines.Count) and IsTableDelim(Lines[i + 1]) then
+        (i + 1 < Lines.Count) and IsTableDelim(PeeledAt(i + 1)) then
       begin
         ClosePara;
-        CloseQuote;
-        if not (InList and (LineIndentOf(Line) >=
+        if not (InList and (QRIndent >=
           ListStack[High(ListStack)].Indent + 2)) then
           CloseList;
         EmitTable; // avanza i hasta la primera línea tras la tabla
@@ -854,7 +1102,6 @@ begin
       if HLevel > 0 then
       begin
         ClosePara;
-        CloseQuote;
         CloseList;
         MarkMap;
         // Quita cierre opcional ### al final
@@ -864,60 +1111,6 @@ begin
           '</h' + IntToStr(HLevel) + '>' + LineEnding;
         Inc(i);
         Continue;
-      end;
-
-      // Blockquote
-      if (Trimmed <> '') and (Trimmed[1] = '>') then
-      begin
-        Content := Trim(Copy(Trimmed, 2, MaxInt));
-        if not InQuote then
-        begin
-          ClosePara;
-          // Cita indentada al contenido del ítem: anidada en el <li>.
-          if not (InList and (LineIndentOf(Line) >=
-            ListStack[High(ListStack)].Indent + 2)) then
-            CloseList;
-          MarkMap;
-          Result += '<blockquote>' + LineEnding;
-          InQuote := True;
-        end;;
-        if Content = '' then
-          ClosePara
-        else
-        begin
-          // Dentro de cita permitimos párrafo simple
-          if not InPara then
-          begin
-            ParaStart := Length(Result);
-            ParaFirst := i;
-            Result += '<p>' + ProcessInline(Content);
-            InPara := True;
-          end
-          else
-            Result += ' ' + ProcessInline(Content);
-        end;
-        Inc(i);
-        // Si la siguiente no es cita, se cerrará al procesarla
-        if (i >= Lines.Count) or (Trim(Copy(Trim(Lines[i]), 1, 1)) <> '>') then
-        begin
-          // peek: Trimmed de la siguiente
-          if (i < Lines.Count) and (Trim(Lines[i]) <> '') and
-            (Trim(Lines[i])[1] = '>') then
-          begin
-            // sigue cita, no cerrar
-          end
-          else
-          begin
-            ClosePara;
-            CloseQuote;
-          end;
-        end;
-        Continue;
-      end
-      else if InQuote then
-      begin
-        ClosePara;
-        CloseQuote;
       end;
 
       // Listas. Los números de las ordenadas se emiten como texto
@@ -973,7 +1166,10 @@ begin
       begin
         // Fin de lista... salvo contenido indentado al ítem abierto
         // (párrafo, cita o código anidados: se emiten dentro del <li>).
-        if LineIndentOf(Line) < ListStack[High(ListStack)].Indent + 2 then
+        // La indentación relevante es la de la línea original (antes
+        // del '>' pelado): así una cita dentro de un ítem no cierra la
+        // lista.
+        if QRIndent < ListStack[High(ListStack)].Indent + 2 then
           CloseList;
         // Si no: sigue dentro del <li> abierto (lo gestionan los
         // tratamientos de párrafo/cita/código de abajo).

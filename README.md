@@ -21,7 +21,8 @@ Vista dividida: editas a la izquierda en `TSynEdit` y ves el resultado a la dere
 - Disposición vertical (lado a lado) u horizontal (uno encima de otro) desde el menú **Ver** (persiste entre sesiones)
 - Clic en el visor: mueve el cursor del editor a la línea correspondiente
 - Clic en un enlace externo: se abre en el navegador del sistema
-- Parser Markdown propio (`markdown.pas`): headings ATX y setext, énfasis, código (cercado e indentado), listas anidadas por indentación, citas, enlaces, imágenes, líneas horizontales y **tablas GFM** con alineación (`:--`, `:-:`, `--:`)
+- Imágenes remotas (`http://…`): se descargan en segundo plano a caché local
+- Parser Markdown propio (`markdown.pas`): headings ATX y setext, énfasis, código (cercado e indentado), listas anidadas por indentación, citas (con anidamiento y con cualquier elemento dentro: headings, listas, código, tablas…), enlaces, imágenes, líneas horizontales y **tablas GFM** con alineación (`:--`, `:-:`, `--:`)
 - Estilos del visor y la exportación en una sola hoja (`MarkdownCss`): bloques de código y citas con fondo propio, tablas con rejilla simple y filas alternadas
 - Barra de estado: fichero, modificado, línea/columna, zoom del visor
 - Ayuda integrada (`F1`) y Acerca de con versión y autor

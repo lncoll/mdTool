@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, Menus, ComCtrls,
   ExtCtrls, IniFiles, LCLType, LCLIntf, htmlview, HTMLSubs, HtmlGlobals,
-  SynEdit, SynEditTypes, SynMarkdown, Markdown
+  SynEdit, SynEditTypes, SynMarkdown, Markdown, ImgFetch
   {$ifdef LCLGTK2}, gtk2, gdk2pixbuf, glib2{$endif}
   ;
 
@@ -128,6 +128,8 @@ type
       Parameters: TRightClickParameters);
     procedure HtmlPreviewHotSpotClick(Sender: TObject;
       const SRC: ThtString; var Handled: Boolean);
+    procedure HtmlPreviewImageRequest(Sender: TObject;
+      const SRC: ThtString; var Stream: TStream);
     procedure HtmlPreviewSectionClick(Sender: TObject; Obj: TSectionBase;
       Button: TMouseButton; Shift: TShiftState; X, Y, IX, IY: Integer);
     procedure SynEditorChange(Sender: TObject);
@@ -180,6 +182,7 @@ type
     FFindText: string;
     FFindOpts: TSynSearchOptions;
     FReplaceText: string;
+    FImgFetcher: TImageFetcher;
     FPreviewMap: TMarkdownLineMap;
     FPreviewHeadLen: Integer;
     FPreviewFragLen: Integer;
@@ -215,6 +218,7 @@ type
     procedure PrefixLines(const APrefix: string; AHeadingLevel: Integer = 0);
     procedure ApplyHeading(ALevel: Integer);
     function MatchSelected: Boolean;
+    procedure ImageFetched(const Url: string; Success: Boolean);
   public
     property FileName: string read GetFileName;
     function ActiveDoc: TDocInfo;
@@ -336,6 +340,9 @@ begin
   OpenDialog1.Options := OpenDialog1.Options + [ofAllowMultiSelect];
   // X de cierre en cada pestaña (lo pinta el widgetset)
   PageControl1.Options := PageControl1.Options + [nboShowCloseButtons];
+  FImgFetcher := TImageFetcher.Create(ExtractFilePath(ConfigFile) +
+    'imgcache');
+  FImgFetcher.OnFetched := @ImageFetched;
   LoadPrefs; // fuente del editor + zoom del visor + disposición
   ApplyViewerZoom;
   ApplySplitLayout;
@@ -404,6 +411,7 @@ procedure TFrmMain.FormDestroy(Sender: TObject);
 var
   i: Integer;
 begin
+  FreeAndNil(FImgFetcher);
   Application.OnDropFiles := nil;
   for i := 0 to PageControl1.PageCount - 1 do
     TDocInfo(PageControl1.Pages[i].Tag).Free;
@@ -881,6 +889,34 @@ begin
     if not OpenURL(U) then
       ShowStatus('No se pudo abrir: ' + U);
   end;
+end;
+
+procedure TFrmMain.HtmlPreviewImageRequest(Sender: TObject;
+  const SRC: ThtString; var Stream: TStream);
+var
+  LF: TextFile;
+begin
+  AssignFile(LF, '/tmp/opencode/imgreq.log');
+  if FileExists('/tmp/opencode/imgreq.log') then Append(LF) else Rewrite(LF);
+  WriteLn(LF, 'REQ ' + string(SRC));
+  CloseFile(LF);
+  // Imágenes remotas: las descarga el fetcher (caché en disco).
+  // Stream = nil -> aún descargando o fallida (se reintenta al recargar).
+  Stream := nil;
+  if Assigned(FImgFetcher) then
+    FImgFetcher.GetImageStream(string(SRC), Stream);
+end;
+
+procedure TFrmMain.ImageFetched(const Url: string; Success: Boolean);
+begin
+  if not Success then
+  begin
+    ShowStatus('No se pudo descargar imagen: ' + Url);
+    Exit;
+  end;
+  // Recarga si el documento aún la usa (ya estará en caché)
+  if (ActiveEditor <> nil) and (Pos(Url, ActiveEditor.Lines.Text) > 0) then
+    UpdatePreview;
 end;
 
 procedure TFrmMain.HtmlPreviewSectionClick(Sender: TObject;

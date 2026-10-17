@@ -64,6 +64,7 @@ object FrmMain: TFrmMain
       TabOrder = 0
       OnRightClick = HtmlPreviewRightClick
       OnHotSpotClick = HtmlPreviewHotSpotClick
+      OnImageRequest = HtmlPreviewImageRequest
       OnSectionClick = HtmlPreviewSectionClick
     end
   end
